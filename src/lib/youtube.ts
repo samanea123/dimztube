@@ -2,12 +2,34 @@
 
 import { google } from 'googleapis';
 
-const API_KEY = process.env.YOUTUBE_API_KEY;
+// 1. Get all API keys from environment variables
+const apiKeys = [
+  process.env.YOUTUBE_API_KEY_1,
+  process.env.YOUTUBE_API_KEY_2,
+  process.env.YOUTUBE_API_KEY_3,
+  process.env.YOUTUBE_API_KEY_4,
+  process.env.YOUTUBE_API_KEY_5,
+].filter((key): key is string => !!key);
 
-const youtube = google.youtube({
-  version: 'v3',
-  auth: API_KEY,
-});
+let currentApiKeyIndex = 0;
+
+// 2. Function to get the current youtube service instance
+const getYoutubeService = () => {
+    if (apiKeys.length === 0) {
+        return null;
+    }
+    const apiKey = apiKeys[currentApiKeyIndex];
+    return google.youtube({
+        version: 'v3',
+        auth: apiKey,
+    });
+}
+
+// 3. Function to switch to the next API key
+const switchToNextApiKey = () => {
+    currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+    console.log(`Switching to YouTube API key index: ${currentApiKeyIndex}`);
+};
 
 export interface VideoItem {
   id: string;
@@ -62,30 +84,59 @@ const formatPublishedAt = (publishedAt: string): string => {
     return `${Math.floor(diffDays / 365)} years ago`;
 };
 
+// 4. Wrap API calls to handle retries with different keys
+async function callYoutubeApi<T>(apiCall: (youtube: any) => Promise<T>): Promise<T | null> {
+    if (apiKeys.length === 0) {
+        console.warn('YouTube API keys are not configured. Please set YOUTUBE_API_KEY_1, etc. environment variables. Returning empty video list.');
+        return null;
+    }
+
+    for (let i = 0; i < apiKeys.length; i++) {
+        const youtube = getYoutubeService();
+        if (!youtube) return null;
+
+        try {
+            return await apiCall(youtube);
+        } catch (error: any) {
+            // Check for quota exceeded or invalid key errors
+            if (error.code === 403 || error.code === 400) {
+                console.warn(`API key at index ${currentApiKeyIndex} failed. Reason: ${error.message}. Trying next key.`);
+                switchToNextApiKey();
+            } else {
+                console.error('An unexpected error occurred with YouTube API:', error);
+                // Don't retry on other errors
+                return null;
+            }
+        }
+    }
+    
+    console.error('All YouTube API keys have failed.');
+    return null;
+}
+
 export async function getPopularVideos(): Promise<VideoItem[]> {
-  if (!API_KEY) {
-    console.warn('YouTube API key is not configured. Please set YOUTUBE_API_KEY environment variable. Returning empty video list.');
+  const response = await callYoutubeApi(youtube => youtube.videos.list({
+    part: ['snippet', 'contentDetails', 'statistics'],
+    chart: 'mostPopular',
+    regionCode: 'ID',
+    maxResults: 20,
+  }));
+
+  if (!response || !response.data.items) {
     return [];
   }
-
-  try {
-    const response = await youtube.videos.list({
-      part: ['snippet', 'contentDetails', 'statistics'],
-      chart: 'mostPopular',
-      regionCode: 'ID',
-      maxResults: 20,
-    });
-
-    const videoItems: VideoItem[] = [];
-    if (response.data.items) {
-      const channelIds = response.data.items.map(item => item.snippet?.channelId).filter((id): id is string => !!id);
-      const channelsResponse = await youtube.channels.list({
-          part: ['snippet'],
-          id: channelIds,
-      });
+  
+  const videoItems: VideoItem[] = [];
+  const channelIds = response.data.items.map(item => item.snippet?.channelId).filter((id): id is string => !!id);
+  
+  if (channelIds.length > 0) {
+      const channelsResponse = await callYoutubeApi(youtube => youtube.channels.list({
+        part: ['snippet'],
+        id: channelIds,
+      }));
 
       const channelAvatars = new Map<string, string>();
-      channelsResponse.data.items?.forEach(channel => {
+      channelsResponse?.data.items?.forEach(channel => {
           if (channel.id && channel.snippet?.thumbnails?.default?.url) {
               channelAvatars.set(channel.id, channel.snippet.thumbnails.default.url);
           }
@@ -106,14 +157,6 @@ export async function getPopularVideos(): Promise<VideoItem[]> {
           });
         }
       }
-    }
-    return videoItems;
-  } catch (error: any) {
-    if (error.code === 400) {
-      console.error('Error fetching popular videos: API key is likely invalid.', error.message);
-    } else {
-      console.error('Error fetching popular videos:', error);
-    }
-    return [];
   }
+  return videoItems;
 }
