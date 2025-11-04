@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react';
 import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
-import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
+import { getPopularVideos, getVideosByCategory, type VideoItem, type VideoApiResponse } from '@/lib/youtube';
 import { addToQueue, getQueue, setQueue, setCurrentIndex, getSettings } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 import QueueSidebar from '@/components/QueueSidebar';
 import MiniPlayer from '@/components/MiniPlayer';
 
+const KEY_USAGE_STORAGE_KEY = 'yt_keys_usage';
+
+interface KeyUsage {
+    id: number;
+    used: number;
+}
 
 const categories = [
   'Semua', 'Musik', 'Lagu Karaoke', 'Film', 'Kuliner', 'Berita',
@@ -21,6 +27,29 @@ export default function HomePageContainer() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Semua');
   const { toast } = useToast();
+  
+  const updateKeyUsage = (apiKeyIndex: number, cost: number, totalKeys: number) => {
+    if (typeof window === 'undefined' || apiKeyIndex === -1) return;
+
+    const storedUsage = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
+    let keys: KeyUsage[] = storedUsage;
+
+    // Initialize if not present or length is wrong
+    if (keys.length !== totalKeys) {
+        keys = Array.from({ length: totalKeys }, (_, i) => ({ id: i, used: 0 }));
+    }
+
+    const keyToUpdate = keys.find(k => k.id === apiKeyIndex);
+    if (keyToUpdate) {
+        keyToUpdate.used += cost;
+    } else {
+        keys[apiKeyIndex] = { id: apiKeyIndex, used: cost };
+    }
+    
+    localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(keys));
+    // Dispatch an event to notify the monitor page
+    window.dispatchEvent(new Event('storage'));
+  };
 
   const fetchAndSetVideos = async (category: string, forceRefresh = false) => {
     setLoading(true);
@@ -35,23 +64,26 @@ export default function HomePageContainer() {
       }
     }
 
-    let newVideos: VideoItem[] = [];
+    let response: VideoApiResponse | null = null;
     try {
       if (category === 'Semua') {
-        newVideos = await getPopularVideos();
+        response = await getPopularVideos();
       } else {
-        newVideos = await getVideosByCategory(category);
+        response = await getVideosByCategory(category);
       }
       
-      if(newVideos.length > 0) {
-        sessionStorage.setItem(cacheKey, JSON.stringify(newVideos));
+      if (response && response.videos.length > 0) {
+        sessionStorage.setItem(cacheKey, JSON.stringify(response.videos));
+        setVideos(response.videos);
+        updateKeyUsage(response.apiKeyIndex, response.cost, response.totalApiKeys);
+      } else {
+        setVideos([]);
       }
     } catch(err) {
       console.error("Gagal mengambil data video:", err);
+      setVideos([]);
     }
 
-
-    setVideos(newVideos);
     setLoading(false);
   };
 
@@ -94,11 +126,24 @@ export default function HomePageContainer() {
     const queue = getQueue();
     let currentIndex = queue.findIndex(v => v.id === startVideoId);
     if (currentIndex === -1) {
-      // If video not in queue, just play it. Queue logic will be handled by player page.
-      setQueue([videos.find(v => v.id === startVideoId)!]);
-      currentIndex = 0;
+      const videoToPlay = videos.find(v => v.id === startVideoId);
+      if (videoToPlay) {
+         setQueue([videoToPlay]);
+         setCurrentIndex(0);
+      } else {
+        // Fallback for video not in the main list (e.g. from queue page)
+        const videoFromQueue = getQueue().find(v => v.id === startVideoId);
+        if (videoFromQueue) {
+            setQueue([videoFromQueue]);
+            setCurrentIndex(0);
+        } else {
+            toast({ variant: 'destructive', title: 'Video tidak ditemukan.'});
+            return;
+        }
+      }
+    } else {
+       setCurrentIndex(currentIndex);
     }
-    setCurrentIndex(currentIndex);
     
     const url = `/player/${startVideoId}?autoplay=1`;
     window.open(url, "_blank", "noopener,noreferrer");
