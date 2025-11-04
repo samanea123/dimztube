@@ -44,34 +44,36 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchVideos = async () => {
-      setLoading(true);
-      const cacheKey = `videos_${selectedCategory}`;
-      
-      const cachedVideos = sessionStorage.getItem(cacheKey);
-      if (cachedVideos) {
-        setVideos(JSON.parse(cachedVideos));
-        setLoading(false);
-        return;
-      }
-
-      let newVideos: VideoItem[] = [];
-      if (selectedCategory === 'Semua') {
-        newVideos = await getPopularVideos();
-      } else {
-        newVideos = await getVideosByCategory(selectedCategory);
-      }
-      
-      if(newVideos.length > 0) {
-        sessionStorage.setItem(cacheKey, JSON.stringify(newVideos));
-      }
-
-      setVideos(newVideos);
+  const fetchAndSetVideos = async (category: string) => {
+    setLoading(true);
+    const cacheKey = `videos_${category}`;
+    
+    // Coba ambil dari cache dulu
+    const cachedVideos = sessionStorage.getItem(cacheKey);
+    if (cachedVideos) {
+      setVideos(JSON.parse(cachedVideos));
       setLoading(false);
-    };
+      return;
+    }
 
-    fetchVideos();
+    // Jika tidak ada di cache, ambil dari API
+    let newVideos: VideoItem[] = [];
+    if (category === 'Semua') {
+      newVideos = await getPopularVideos();
+    } else {
+      newVideos = await getVideosByCategory(category);
+    }
+    
+    if(newVideos.length > 0) {
+      sessionStorage.setItem(cacheKey, JSON.stringify(newVideos));
+    }
+
+    setVideos(newVideos);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAndSetVideos(selectedCategory);
   }, [selectedCategory]);
 
   return (

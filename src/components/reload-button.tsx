@@ -5,13 +5,13 @@ import { RotateCw } from 'lucide-react';
 
 export default function ReloadButton() {
   const handleReload = () => {
-    // Clear the specific video caches from sessionStorage
+    // Hapus semua cache video dari sessionStorage
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('videos_')) {
         sessionStorage.removeItem(key);
       }
     });
-    // Perform a full page reload
+    // Lakukan reload halaman penuh
     window.location.reload();
   };
 
