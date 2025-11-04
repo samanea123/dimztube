@@ -58,18 +58,18 @@ export default function CastButton() {
   }, []);
 
   const handleCastClick = () => {
-    window.chrome.cast.requestSession(
-      (session) => {
-        console.log('Session initialized:', session);
-      },
-      (error) => {
-        console.error('Session initialization error:', error);
-      }
-    );
+    if (!window.chrome.cast) return;
+    
+    const castContext = window.chrome.cast.framework.CastContext.getInstance();
+    castContext.requestSession((session: any) => {
+      console.log('Session initialized:', session);
+    }, (error: any) => {
+      console.error('Session initialization error:', error);
+    });
   };
   
   if (!isApiAvailable || castState === 'no_devices_available') {
-    return null; // Don't show the button if Cast is not available or no devices are found
+    return null;
   }
 
   const isConnected = castState === 'connected';
@@ -79,7 +79,7 @@ export default function CastButton() {
       variant="ghost"
       size="icon"
       onClick={handleCastClick}
-      className={`hidden sm:flex ${isConnected ? 'text-primary' : ''}`}
+      className={`ml-2 flex-shrink-0 ${isConnected ? 'text-primary' : ''}`}
     >
       <Cast className="h-5 w-5" />
     </Button>
