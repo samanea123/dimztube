@@ -5,9 +5,6 @@ import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Tv, MonitorSmartphone } from 'lucide-react';
 
 const categories = [
   'Semua', 'Musik', 'Lagu Karaoke', 'Film', 'Kuliner', 'Berita',
@@ -18,7 +15,6 @@ export default function HomePageContainer() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Semua');
-  const [showCastModal, setShowCastModal] = useState(false);
 
   const fetchAndSetVideos = async (category: string, forceRefresh = false) => {
     setLoading(true);
@@ -65,9 +61,31 @@ export default function HomePageContainer() {
     setSelectedCategory(category);
   };
 
+  const handleCast = () => {
+    if (window.cast && window.cast.framework) {
+      const context = cast.framework.CastContext.getInstance();
+      const session = context.getCurrentSession();
+
+      if (!session) {
+        context.requestSession()
+          .then(() => console.log("Sesi Cast berhasil dimulai!"))
+          .catch((err) => console.error("Gagal memulai sesi Cast:", err));
+      } else {
+        // Jika sudah ada sesi, tombol ini akan menghentikannya.
+        // Dalam implementasi nyata, Anda mungkin ingin mengubah state ikon.
+        context.endCurrentSession(true)
+            .then(() => console.log("Sesi Cast dihentikan."))
+            .catch((err) => console.error("Gagal menghentikan sesi Cast:", err));
+      }
+    } else {
+      console.warn("Google Cast API tidak tersedia.");
+      alert("Fungsi Google Cast tidak tersedia di perangkat atau browser ini.");
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
-        <Navbar onReload={handleReload} onCast={() => setShowCastModal(true)} />
+        <Navbar onReload={handleReload} onCast={handleCast} />
         <div className="sticky top-14 z-10 bg-background/95 backdrop-blur">
              <CategoryBar
                 categories={categories}
@@ -78,34 +96,6 @@ export default function HomePageContainer() {
         <main className="flex-1 overflow-y-auto">
             <HomeFeed videos={videos} loading={loading} />
         </main>
-        
-        {/* Cast Modal using Popover */}
-        <Popover open={showCastModal} onOpenChange={setShowCastModal}>
-          <PopoverTrigger asChild>
-            <div />
-          </PopoverTrigger>
-          <PopoverContent className="w-64" align="end">
-             <div className="grid gap-4">
-              <div className="space-y-2">
-                <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
-                <p className="text-sm text-muted-foreground">
-                  Pilih perangkat untuk melakukan cast.
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <Button variant="ghost" className="justify-start">
-                  <Tv className="mr-2 h-4 w-4" />
-                  TV Ruang Tamu
-                </Button>
-                <Button variant="ghost" className="justify-start">
-                  <MonitorSmartphone className="mr-2 h-4 w-4" />
-                  Chromecast Dapur
-                </Button>
-                 <Button variant="outline" onClick={() => setShowCastModal(false)}>Batal</Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
     </div>
   );
 }
