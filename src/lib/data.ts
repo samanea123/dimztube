@@ -175,7 +175,7 @@ export const categories = [
   'Musik',
   'Lagu Karaoke',
   'Film',
-  'Langsung',
+  'Kuliner',
   'Berita',
   'React',
   'Next.js',
