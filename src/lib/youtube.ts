@@ -4,10 +4,6 @@ import { google } from 'googleapis';
 
 const API_KEY = process.env.YOUTUBE_API_KEY;
 
-if (!API_KEY) {
-  throw new Error('YouTube API key is not configured. Please set YOUTUBE_API_KEY environment variable.');
-}
-
 const youtube = google.youtube({
   version: 'v3',
   auth: API_KEY,
@@ -67,6 +63,11 @@ const formatPublishedAt = (publishedAt: string): string => {
 };
 
 export async function getPopularVideos(): Promise<VideoItem[]> {
+  if (!API_KEY) {
+    console.warn('YouTube API key is not configured. Please set YOUTUBE_API_KEY environment variable. Returning empty video list.');
+    return [];
+  }
+
   try {
     const response = await youtube.videos.list({
       part: ['snippet', 'contentDetails', 'statistics'],
@@ -107,8 +108,12 @@ export async function getPopularVideos(): Promise<VideoItem[]> {
       }
     }
     return videoItems;
-  } catch (error) {
-    console.error('Error fetching popular videos:', error);
+  } catch (error: any) {
+    if (error.code === 400) {
+      console.error('Error fetching popular videos: API key is likely invalid.', error.message);
+    } else {
+      console.error('Error fetching popular videos:', error);
+    }
     return [];
   }
 }
