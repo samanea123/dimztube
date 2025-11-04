@@ -235,7 +235,7 @@ export default function HomePageContainer() {
               
               if (requestFullScreen) {
                 try {
-                    await requestFullScreen.call(iframe);
+                    // Coba masuk fullscreen setelah interaksi pengguna (play)
                 } catch(e) {
                     console.log("Gagal masuk fullscreen otomatis", e);
                 }
@@ -249,6 +249,28 @@ export default function HomePageContainer() {
                   console.warn("Gagal mengunci orientasi layar:", e);
               }
             }
+            
+            async function handleFirstPlay() {
+                const iframe = document.getElementById('player');
+                const requestFullScreen = iframe.requestFullscreen || iframe.mozRequestFullScreen || iframe.webkitRequestFullScreen;
+                if (requestFullScreen) {
+                    try {
+                        await requestFullScreen.call(iframe);
+                    } catch (e) {
+                        console.log("Gagal masuk fullscreen otomatis", e);
+                    }
+                }
+                // Hapus listener setelah dijalankan sekali
+                player.removeEventListener('onStateChange', handleFirstPlayWrapper);
+            }
+
+            // Wrapper untuk memfilter hanya state PLAYING
+            function handleFirstPlayWrapper(event) {
+                if (event.data === YT.PlayerState.PLAYING) {
+                    handleFirstPlay();
+                }
+            }
+
 
             function onPlayerStateChange(event) {
                 if (event.data === YT.PlayerState.PLAYING && player.isMuted()) {
@@ -278,6 +300,19 @@ export default function HomePageContainer() {
                     }
                 }
             }
+
+            function handleFullscreenChange() {
+                if (!document.fullscreenElement && screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            }
+
+            document.addEventListener("fullscreenchange", handleFullscreenChange);
+            document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+            document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+            document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+
           </script>
         </body>
       </html>
