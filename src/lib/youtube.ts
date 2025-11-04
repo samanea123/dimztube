@@ -114,49 +114,76 @@ async function callYoutubeApi<T>(apiCall: (youtube: any) => Promise<T>): Promise
     return null;
 }
 
+async function processVideoResponse(response: any): Promise<VideoItem[]> {
+    if (!response || !response.data.items) {
+        return [];
+    }
+    
+    const videoItems: VideoItem[] = [];
+    
+    const videoIds = response.data.items.map((item: any) => item.id.videoId || item.id).filter(Boolean);
+    
+    if (videoIds.length === 0) return [];
+
+    const videoDetailsResponse = await callYoutubeApi(youtube => youtube.videos.list({
+        part: ['snippet', 'contentDetails', 'statistics'],
+        id: videoIds,
+    }));
+
+    if (!videoDetailsResponse || !videoDetailsResponse.data.items) return [];
+
+    const channelIds = videoDetailsResponse.data.items.map(item => item.snippet?.channelId).filter((id): id is string => !!id);
+    
+    const channelAvatars = new Map<string, string>();
+    if (channelIds.length > 0) {
+        const channelsResponse = await callYoutubeApi(youtube => youtube.channels.list({
+          part: ['snippet'],
+          id: channelIds,
+        }));
+
+        channelsResponse?.data.items?.forEach(channel => {
+            if (channel.id && channel.snippet?.thumbnails?.default?.url) {
+                channelAvatars.set(channel.id, channel.snippet.thumbnails.default.url);
+            }
+        });
+    }
+
+    for (const item of videoDetailsResponse.data.items) {
+        if (item.id && item.snippet && item.contentDetails && item.statistics) {
+            videoItems.push({
+                id: item.id,
+                title: item.snippet.title || 'No title',
+                thumbnailUrl: item.snippet.thumbnails?.medium?.url || '',
+                channelTitle: item.snippet.channelTitle || 'Unknown channel',
+                channelId: item.snippet.channelId || '',
+                viewCount: formatViews(item.statistics.viewCount || '0'),
+                publishedAt: formatPublishedAt(item.snippet.publishedAt || ''),
+                duration: formatDuration(item.contentDetails.duration || ''),
+                channelAvatarUrl: channelAvatars.get(item.snippet.channelId || '')
+            });
+        }
+    }
+    return videoItems;
+}
+
 export async function getPopularVideos(): Promise<VideoItem[]> {
   const response = await callYoutubeApi(youtube => youtube.videos.list({
-    part: ['snippet', 'contentDetails', 'statistics'],
+    part: ['id'],
     chart: 'mostPopular',
     regionCode: 'ID',
     maxResults: 20,
   }));
+  return processVideoResponse(response);
+}
 
-  if (!response || !response.data.items) {
-    return [];
-  }
-  
-  const videoItems: VideoItem[] = [];
-  const channelIds = response.data.items.map(item => item.snippet?.channelId).filter((id): id is string => !!id);
-  
-  if (channelIds.length > 0) {
-      const channelsResponse = await callYoutubeApi(youtube => youtube.channels.list({
-        part: ['snippet'],
-        id: channelIds,
-      }));
-
-      const channelAvatars = new Map<string, string>();
-      channelsResponse?.data.items?.forEach(channel => {
-          if (channel.id && channel.snippet?.thumbnails?.default?.url) {
-              channelAvatars.set(channel.id, channel.snippet.thumbnails.default.url);
-          }
-      });
-
-      for (const item of response.data.items) {
-        if (item.id && item.snippet && item.contentDetails && item.statistics) {
-          videoItems.push({
-            id: item.id,
-            title: item.snippet.title || 'No title',
-            thumbnailUrl: item.snippet.thumbnails?.medium?.url || '',
-            channelTitle: item.snippet.channelTitle || 'Unknown channel',
-            channelId: item.snippet.channelId || '',
-            viewCount: formatViews(item.statistics.viewCount || '0'),
-            publishedAt: formatPublishedAt(item.snippet.publishedAt || ''),
-            duration: formatDuration(item.contentDetails.duration || ''),
-            channelAvatarUrl: channelAvatars.get(item.snippet.channelId || '')
-          });
-        }
-      }
-  }
-  return videoItems;
+export async function getVideosByCategory(category: string): Promise<VideoItem[]> {
+    const response = await callYoutubeApi(youtube => youtube.search.list({
+        part: ['id'],
+        q: category,
+        type: 'video',
+        videoCategoryId: category === 'Musik' ? '10' : undefined,
+        maxResults: 20,
+        regionCode: 'ID'
+    }));
+    return processVideoResponse(response);
 }
