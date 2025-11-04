@@ -5,6 +5,9 @@ import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
+import { addToQueue } from '@/lib/queue';
+import { useToast } from '@/hooks/use-toast';
+
 
 const categories = [
   'Semua', 'Musik', 'Lagu Karaoke', 'Film', 'Kuliner', 'Berita',
@@ -15,6 +18,7 @@ export default function HomePageContainer() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const { toast } = useToast();
 
   const fetchAndSetVideos = async (category: string, forceRefresh = false) => {
     setLoading(true);
@@ -110,7 +114,11 @@ export default function HomePageContainer() {
     openVideoInNewTab(videoId); // Buka di tab baru sebagai fallback
   };
 
-  const openVideoInNewTab = (videoId: string) => {
+  const openVideoInNewTab = (videoId: string, video?: VideoItem) => {
+    if (video) {
+        // Ganti antrian hanya dengan video ini
+        localStorage.setItem("dimztubeQueue", JSON.stringify([video]));
+    }
     const playerWindow = window.open("", "_blank");
 
     if (!playerWindow) {
@@ -201,6 +209,14 @@ export default function HomePageContainer() {
     playerWindow.document.close();
   };
 
+  const handleAddToQueue = (video: VideoItem) => {
+    addToQueue(video);
+    toast({
+        title: "✅ Ditambahkan ke antrian",
+        description: `"${video.title}" telah ditambahkan.`,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
         <Navbar onReload={handleReload} onCast={() => {
@@ -215,7 +231,12 @@ export default function HomePageContainer() {
             />
         </div>
         <main className="flex-1 overflow-y-auto">
-            <HomeFeed videos={videos} loading={loading} onVideoClick={openVideoInNewTab} />
+            <HomeFeed 
+                videos={videos} 
+                loading={loading} 
+                onPlayVideo={(video) => openVideoInNewTab(video.id, video)} 
+                onAddToQueue={handleAddToQueue}
+            />
         </main>
     </div>
   );

@@ -4,22 +4,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { VideoItem } from '@/lib/youtube';
 import { cn } from '@/lib/utils';
+import { Button } from './ui/button';
+import { Play, Plus } from 'lucide-react';
 
 type VideoCardProps = {
   video: VideoItem;
   variant?: 'default' | 'compact';
-  onVideoClick?: () => void;
+  onPlay?: () => void;
+  onAddToQueue?: () => void;
 };
 
-export default function VideoCard({ video, variant = 'default', onVideoClick }: VideoCardProps) {
+export default function VideoCard({ video, variant = 'default', onPlay, onAddToQueue }: VideoCardProps) {
   const cardContent = (
-    <div 
-      className={cn(
-        variant === 'default' ? 'flex flex-col space-y-2' : 'flex gap-3',
-        onVideoClick && 'cursor-pointer group'
-      )}
-      onClick={onVideoClick}
-    >
+    <div className={cn('flex flex-col space-y-2 group')}>
       <div className={cn(
         "relative aspect-video",
         variant === 'default' ? 'w-full' : 'w-40 flex-shrink-0'
@@ -58,18 +55,34 @@ export default function VideoCard({ video, variant = 'default', onVideoClick }: 
           </div>
         </div>
       </div>
+      {(onPlay || onAddToQueue) && (
+        <div className="flex gap-2 pt-1">
+          {onPlay && (
+            <Button onClick={(e) => { e.stopPropagation(); onPlay(); }} size="sm" className="flex-1">
+              <Play className="mr-2 h-4 w-4" />
+              Play
+            </Button>
+          )}
+          {onAddToQueue && (
+            <Button onClick={(e) => { e.stopPropagation(); onAddToQueue(); }} size="sm" variant="secondary" className="flex-1">
+              <Plus className="mr-2 h-4 w-4" />
+              Queue
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 
-  // If onVideoClick is provided, the div handles the click.
-  // Otherwise, wrap with a Link component.
-  if (onVideoClick) {
-    return cardContent;
+  // If no actions, wrap with Link component for default navigation
+  if (!onPlay && !onAddToQueue) {
+    return (
+      <Link href={`/watch?v=${video.id}`}>
+        {cardContent}
+      </Link>
+    );
   }
-
-  return (
-    <Link href={`/watch?v=${video.id}`}>
-      {cardContent}
-    </Link>
-  );
+  
+  // Otherwise, the div with buttons handles interactions
+  return cardContent;
 }
