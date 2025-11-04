@@ -61,6 +61,8 @@ export default function VideoCard({ video, variant = 'default', onVideoClick }: 
     </div>
   );
 
+  // If onVideoClick is provided, the div handles the click.
+  // Otherwise, wrap with a Link component.
   if (onVideoClick) {
     return cardContent;
   }

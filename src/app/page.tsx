@@ -50,13 +50,11 @@ export default function HomePageContainer() {
   };
 
   useEffect(() => {
-    // Inisialisasi Cast API
-    window['__onGCastApiAvailable'] = (isAvailable) => {
+    window['__onGCastApiAvailable'] = (isAvailable: boolean) => {
       if (isAvailable) {
         initializeCastApi();
       }
     };
-    // Ambil data video
     fetchAndSetVideos(selectedCategory);
   }, [selectedCategory]);
 
@@ -106,35 +104,33 @@ export default function HomePageContainer() {
     }
   };
 
-  const castVideo = (videoId: string) => {
-    if (window.cast && window.cast.framework) {
-      const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
-      if (castSession) {
-        const mediaInfo = new chrome.cast.media.MediaInfo(videoId, 'video/mp4');
-        const request = new chrome.cast.media.LoadRequest(mediaInfo);
-        
-        // Atur untuk video YouTube
-        mediaInfo.contentType = 'application/x-www-form-urlencoded';
-        mediaInfo.contentId = videoId;
+  const openVideoInNewTab = (videoId: string) => {
+    const playerWindow = window.open("", "_blank");
 
-        castSession.loadMedia(request)
-          .then(() => console.log('Memutar video di TV...'))
-          .catch((error: any) => console.error('Gagal memuat media:', error));
-      } else {
-        cast.framework.CastContext.getInstance().requestSession()
-          .then(() => {
-             console.log("Memulai sesi cast dan mencoba memutar video...");
-             setTimeout(() => castVideo(videoId), 1000);
-          })
-          .catch((err: any) => {
-            console.error('Gagal memulai sesi cast:', err);
-          });
-      }
-    } else {
-        alert("Fungsi Google Cast tidak tersedia di perangkat atau browser ini.");
+    if (!playerWindow) {
+      alert("Popup diblokir! Izinkan popup untuk DimzTube.");
+      return;
     }
-  };
 
+    playerWindow.document.write(`
+      <html>
+        <head>
+          <title>DimzTube Player</title>
+          <style>
+            body { margin: 0; background-color: black; }
+            iframe { border: none; width: 100vw; height: 100vh; }
+          </style>
+        </head>
+        <body>
+          <iframe 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1&fs=1" 
+            allow="autoplay; fullscreen"
+          ></iframe>
+        </body>
+      </html>
+    `);
+    playerWindow.document.close();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -147,7 +143,7 @@ export default function HomePageContainer() {
             />
         </div>
         <main className="flex-1 overflow-y-auto">
-            <HomeFeed videos={videos} loading={loading} onVideoClick={castVideo} />
+            <HomeFeed videos={videos} loading={loading} onVideoClick={openVideoInNewTab} />
         </main>
     </div>
   );
