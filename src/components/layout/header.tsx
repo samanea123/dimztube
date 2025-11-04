@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Search, Mic, Video, Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +11,6 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
       <div className="flex items-center gap-2">
-        <SidebarTrigger className="h-8 w-8" />
         <Link href="/" className="flex items-center gap-2">
           <Logo />
           <span className="font-bold text-lg hidden sm:inline-block">DimzTube</span>

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/layout/header";
-import MainSidebar from "@/components/layout/main-sidebar";
 import BottomNav from "@/components/layout/bottom-nav";
 
 export const metadata: Metadata = {
@@ -39,19 +37,16 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
-        <SidebarProvider>
-          <div className="relative flex min-h-screen w-full flex-col">
-            <Header />
-            <div className="flex flex-1">
-              <MainSidebar />
-              <SidebarInset className="flex-1 !bg-background">
-                {children}
-              </SidebarInset>
-            </div>
-            <BottomNav />
-            <Toaster />
+        <div className="relative flex min-h-screen w-full flex-col">
+          <Header />
+          <div className="flex flex-1">
+            <main className="flex-1 !bg-background">
+              {children}
+            </main>
           </div>
-        </SidebarProvider>
+          <BottomNav />
+          <Toaster />
+        </div>
       </body>
     </html>
   );
