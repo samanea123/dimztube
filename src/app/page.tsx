@@ -47,9 +47,24 @@ export default function Home() {
   useEffect(() => {
     const fetchVideos = async () => {
       setLoading(true);
+      const cacheKey = `videos_${selectedCategory}`;
+      
+      // Try to get data from sessionStorage
+      if (selectedCategory === 'Semua') {
+        const cachedVideos = sessionStorage.getItem(cacheKey);
+        if (cachedVideos) {
+          setVideos(JSON.parse(cachedVideos));
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If no cache, fetch from API
       let newVideos: VideoItem[] = [];
       if (selectedCategory === 'Semua') {
         newVideos = await getPopularVideos();
+        // Save to sessionStorage
+        sessionStorage.setItem(cacheKey, JSON.stringify(newVideos));
       } else {
         newVideos = await getVideosByCategory(selectedCategory);
       }
