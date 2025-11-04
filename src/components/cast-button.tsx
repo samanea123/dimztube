@@ -11,7 +11,7 @@ export default function CastButton() {
         <Button
           variant="ghost"
           size="icon"
-          className="hover:text-red-500"
+          className="hover:text-primary"
           aria-label="Cast to device"
         >
           <Cast className="h-5 w-5" />
