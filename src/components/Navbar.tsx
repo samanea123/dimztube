@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import MirrorButton from "./MirrorButton";
 
 interface NavbarProps {
   onReload: () => void;
@@ -62,6 +63,8 @@ export default function Navbar({ onReload, onCast }: NavbarProps) {
         >
             <Cast className="h-5 w-5" />
         </Button>
+        
+        <MirrorButton />
         
         <Button variant="ghost" size="icon" className="hidden sm:flex">
           <Bell className="h-5 w-5" />
