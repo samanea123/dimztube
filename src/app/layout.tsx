@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import BottomNav from "@/components/layout/bottom-nav";
-import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "DimzTube",
@@ -35,6 +34,7 @@ export default function RootLayout({
             `,
           }}
         />
+        <script src="https://www.gstatic.com/cv/js/sender/v1/cast_framework.js" async></script>
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <div className="relative flex min-h-screen w-full flex-col">
@@ -44,7 +44,6 @@ export default function RootLayout({
           <BottomNav />
           <Toaster />
         </div>
-        <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_framework.js" strategy="lazyOnload" />
       </body>
     </html>
   );
