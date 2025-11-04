@@ -227,13 +227,26 @@ export default function HomePageContainer() {
                 }
             }
 
-            function onPlayerReady(event) {
+            async function onPlayerReady(event) {
               event.target.mute();
               event.target.playVideo();
               const iframe = document.getElementById('player');
               const requestFullScreen = iframe.requestFullscreen || iframe.mozRequestFullScreen || iframe.webkitRequestFullScreen;
+              
               if (requestFullScreen) {
-                requestFullScreen.call(iframe).catch(() => console.log("Gagal masuk fullscreen otomatis"));
+                try {
+                    await requestFullScreen.call(iframe);
+                } catch(e) {
+                    console.log("Gagal masuk fullscreen otomatis", e);
+                }
+              }
+
+              try {
+                  if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock("landscape");
+                  }
+              } catch(e) {
+                  console.warn("Gagal mengunci orientasi layar:", e);
               }
             }
 
@@ -257,6 +270,9 @@ export default function HomePageContainer() {
                            }
                            playCurrentVideo();
                         } else {
+                           if (document.fullscreenElement) {
+                                document.exitFullscreen();
+                           }
                            window.close();
                         }
                     }
