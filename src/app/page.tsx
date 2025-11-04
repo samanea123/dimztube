@@ -1,8 +1,11 @@
 import CategoryBar from "@/components/category-bar";
 import VideoCard from "@/components/video-card";
-import { videos, categories } from "@/lib/data";
+import { categories } from "@/lib/data";
+import { getPopularVideos, type VideoItem } from "@/lib/youtube";
 
-export default function Home() {
+export default async function Home() {
+  const videos: VideoItem[] = await getPopularVideos();
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur">

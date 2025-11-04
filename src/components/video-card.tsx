@@ -2,39 +2,35 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Video } from '@/lib/data';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import type { VideoItem } from '@/lib/youtube';
 import { cn } from '@/lib/utils';
 
 type VideoCardProps = {
-  video: Video;
+  video: VideoItem;
   variant?: 'default' | 'compact';
 };
 
 export default function VideoCard({ video, variant = 'default' }: VideoCardProps) {
-  const thumbnail = PlaceHolderImages.find((img) => img.id === video.thumbnailId);
-  const avatar = PlaceHolderImages.find((img) => img.id === video.channel.avatarId);
-
   if (variant === 'compact') {
     return (
-      <Link href="/watch">
+      <Link href={`/watch?v=${video.id}`}>
         <div className="flex gap-3">
           <div className="relative aspect-video w-40 flex-shrink-0">
-             {thumbnail && (
+             {video.thumbnailUrl && (
               <Image
-                src={thumbnail.imageUrl}
+                src={video.thumbnailUrl}
                 alt={video.title}
                 fill
                 className="rounded-lg object-cover"
-                data-ai-hint={thumbnail.imageHint}
+                data-ai-hint="video thumbnail"
               />
             )}
             <Badge variant="secondary" className="absolute bottom-1 right-1">{video.duration}</Badge>
           </div>
           <div className="flex-grow">
             <h3 className="text-sm font-semibold line-clamp-2">{video.title}</h3>
-            <p className="text-xs text-muted-foreground mt-1">{video.channel.name}</p>
-            <p className="text-xs text-muted-foreground">{video.views} views • {video.uploadedAt}</p>
+            <p className="text-xs text-muted-foreground mt-1">{video.channelTitle}</p>
+            <p className="text-xs text-muted-foreground">{video.viewCount} views • {video.publishedAt}</p>
           </div>
         </div>
       </Link>
@@ -42,30 +38,30 @@ export default function VideoCard({ video, variant = 'default' }: VideoCardProps
   }
 
   return (
-    <Link href="/watch">
+    <Link href={`/watch?v=${video.id}`}>
       <div className="flex flex-col space-y-2 cursor-pointer">
         <div className="relative aspect-video">
-          {thumbnail && (
+          {video.thumbnailUrl && (
             <Image
-              src={thumbnail.imageUrl}
+              src={video.thumbnailUrl}
               alt={video.title}
               fill
               className="rounded-xl object-cover transition-transform group-hover:scale-105"
-              data-ai-hint={thumbnail.imageHint}
+              data-ai-hint="video thumbnail"
             />
           )}
           <Badge variant="secondary" className="absolute bottom-2 right-2">{video.duration}</Badge>
         </div>
         <div className="flex gap-3 items-start">
           <Avatar className="mt-1 flex-shrink-0">
-            {avatar && <AvatarImage src={avatar.imageUrl} alt={video.channel.name} />}
-            <AvatarFallback>{video.channel.name.slice(0, 1)}</AvatarFallback>
+            {video.channelAvatarUrl && <AvatarImage src={video.channelAvatarUrl} alt={video.channelTitle} />}
+            <AvatarFallback>{video.channelTitle.slice(0, 1)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <h3 className="font-semibold text-base line-clamp-2">{video.title}</h3>
             <div className="text-muted-foreground text-sm mt-1">
-              <p>{video.channel.name}</p>
-              <p>{video.views} views • {video.uploadedAt}</p>
+              <p>{video.channelTitle}</p>
+              <p>{video.viewCount} views • {video.publishedAt}</p>
             </div>
           </div>
         </div>
