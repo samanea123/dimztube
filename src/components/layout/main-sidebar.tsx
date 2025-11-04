@@ -75,14 +75,6 @@ export default function MainSidebar() {
                     </SidebarMenuButton>
                 </Link>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-                <Link href="/admin/monitor" passHref legacyBehavior>
-                    <SidebarMenuButton as="a" isActive={pathname.startsWith('/admin/monitor')} tooltip="API Monitor">
-                        <Monitor />
-                        <span>API Monitor</span>
-                    </SidebarMenuButton>
-                </Link>
-            </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

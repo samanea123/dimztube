@@ -70,10 +70,12 @@ export default function Navbar({ onReload, onCast }: NavbarProps) {
           <Bell className="h-5 w-5" />
         </Button>
 
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={userAvatar?.imageUrl} alt="User" />
-          <AvatarFallback>U</AvatarFallback>
-        </Avatar>
+        <Link href="/admin/monitor" title="Halaman Admin">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={userAvatar?.imageUrl} alt="User" />
+            <AvatarFallback>U</AvatarFallback>
+          </Avatar>
+        </Link>
       </div>
     </header>
   );
