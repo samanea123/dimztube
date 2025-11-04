@@ -173,7 +173,7 @@ export const videos: Video[] = [
 export const categories = [
   'Semua',
   'Musik',
-  'Game',
+  'Lagu Karaoke',
   'Film',
   'Langsung',
   'Berita',
