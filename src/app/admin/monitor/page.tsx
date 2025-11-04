@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { Terminal, ArrowLeft } from "lucide-react";
 
 const KEY_USAGE_STORAGE_KEY = 'yt_keys_usage';
 const QUOTA_LIMIT = 10000;
@@ -48,6 +49,14 @@ export default function ApiKeyMonitorPage() {
 
   return (
     <div className="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+        <div className="mb-4">
+            <Button asChild variant="ghost">
+                <Link href="/">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Kembali ke Halaman Utama
+                </Link>
+            </Button>
+        </div>
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center justify-between">
