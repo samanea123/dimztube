@@ -2,13 +2,17 @@
 
 import { Button } from '@/components/ui/button';
 import { RotateCw } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 export default function ReloadButton() {
-  const router = useRouter();
-
   const handleReload = () => {
-    router.refresh();
+    // Clear the specific video caches from sessionStorage
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('videos_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    // Perform a full page reload
+    window.location.reload();
   };
 
   return (
@@ -17,6 +21,7 @@ export default function ReloadButton() {
       size="icon"
       onClick={handleReload}
       className="ml-2 flex-shrink-0"
+      aria-label="Reload page"
     >
       <RotateCw className="h-5 w-5" />
     </Button>
