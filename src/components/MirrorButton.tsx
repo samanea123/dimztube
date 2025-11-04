@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,21 +21,29 @@ export default function MirrorButton() {
     try {
       // Request screen capture permission
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: { frameRate: 30 },
         audio: true
       });
       setStream(displayStream);
 
       // Activate Wake Lock (prevents screen from turning off)
       if ("wakeLock" in navigator) {
-        const lock = await (navigator as any).wakeLock.request("screen");
-        setWakeLock(lock);
-        lock.addEventListener("release", () => {
-          console.log("Wake lock was released");
-        });
+        try {
+          const lock = await (navigator as any).wakeLock.request("screen");
+          setWakeLock(lock);
+          console.log("✅ Wake Lock aktif — layar tidak akan mati selama mirror aktif");
+          lock.addEventListener("release", () => {
+            console.log("⚠️ Wake Lock dilepas");
+          });
+        } catch (err) {
+            console.warn("Wake Lock tidak bisa diaktifkan:", err);
+        }
       }
 
       setIsMirroring(true);
+      alert(
+        "✅ Mirror Mode aktif!\nBuka menu Cast di Chrome → pilih 'Cast tab ini' untuk tampil di TV.\nLayar HP/Laptop bisa diredupkan, aplikasi tetap jalan."
+      );
 
       // Detect if user stops mirroring from the browser UI
       displayStream.getVideoTracks()[0].addEventListener("ended", () => {
@@ -43,8 +51,8 @@ export default function MirrorButton() {
       });
 
     } catch (err) {
-      console.error("Failed to start mirror:", err);
-      // User likely cancelled the request
+      console.error("❌ Gagal mirror:", err);
+      alert("Gagal memulai mirror, periksa izin layar dan browser.");
     }
   };
 
@@ -59,16 +67,25 @@ export default function MirrorButton() {
     
     setIsMirroring(false);
     if(showAlert) {
-        // You might want to use a more integrated notification system here
+        alert("🛑 Mirror Mode dimatikan.");
     }
   };
+
+  // Cleanup wake lock when component unmounts
+  useEffect(() => {
+    return () => {
+      if (wakeLock) {
+        wakeLock.release();
+      }
+    };
+  }, [wakeLock]);
   
   return (
     <Button
         variant="ghost"
         size="icon"
         onClick={isMirroring ? () => stopMirror() : startMirror}
-        className="hover:text-primary"
+        className={isMirroring ? 'bg-red-600 text-white hover:bg-red-700 hover:text-white' : 'hover:text-primary'}
         aria-label={isMirroring ? "Stop mirror" : "Mirror to TV"}
         title={isMirroring ? "Hentikan Mirror" : "Mirror ke TV"}
     >
