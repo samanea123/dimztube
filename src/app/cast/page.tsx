@@ -1,73 +1,52 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 export default function CastPage() {
   useEffect(() => {
-    // Pastikan Cast SDK sudah dimuat
-    if (window.chrome && window.chrome.cast && window.chrome.cast.isAvailable) {
-      initializeCastApi();
-    } else {
-      // Jika SDK belum siap, tambahkan event listener
-      window['__onGCastApiAvailable'] = (isAvailable) => {
-        if (isAvailable) {
-          initializeCastApi();
-        }
-      };
+    // Fungsi ini akan dipanggil oleh Cast SDK setelah dimuat
+    window['__onGCastApiAvailable'] = (isAvailable) => {
+      if (isAvailable) {
+        initializeCastApi();
+      }
+    };
+
+    // Jika SDK sudah ada saat komponen dimuat, inisialisasi langsung
+    if (window.cast && window.cast.framework) {
+        initializeCastApi();
     }
+
   }, []);
 
   const initializeCastApi = () => {
-    const sessionRequest = new chrome.cast.SessionRequest(
-      chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID
-    );
-
-    const apiConfig = new chrome.cast.ApiConfig(
-      sessionRequest,
-      (session) => {
-        // Callback saat sesi berhasil dibuat
-        console.log('Sesi Cast berhasil dibuat:', session);
-      },
-      (receiver) => {
-        // Callback saat perangkat ditemukan
-        if (receiver === chrome.cast.ReceiverAvailability.AVAILABLE) {
-          console.log('Perangkat Cast ditemukan.');
-        } else {
-          console.log('Tidak ada perangkat Cast yang ditemukan.');
-        }
-      }
-    );
-
-    chrome.cast.initialize(apiConfig, onInitSuccess, onError);
-  };
-
-  const onInitSuccess = () => {
-    console.log('Google Cast API berhasil diinisialisasi.');
-  };
-
-  const onError = (error: any) => {
-    console.error('Gagal inisialisasi Google Cast API:', error);
-  };
-
-  const handleCast = () => {
-    chrome.cast.requestSession(onSessionSuccess, onError);
-  };
-
-  const onSessionSuccess = (session: chrome.cast.Session) => {
-    console.log('Berhasil terhubung ke sesi:', session);
-    // Di sini Anda bisa mulai memuat media
+    try {
+        const context = cast.framework.CastContext.getInstance();
+        context.setOptions({
+            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+        });
+        console.log('Google Cast API berhasil diinisialisasi.');
+    } catch(error) {
+        console.error('Gagal inisialisasi Google Cast API:', error);
+    }
   };
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Halaman Tes Google Cast</h1>
-      <p className="mb-4">Buka konsol browser (F12) untuk melihat log inisialisasi Cast.</p>
-      <button 
-        onClick={handleCast}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-      >
-        Mulai Cast
-      </button>
+      <p className="mb-4">Buka konsol browser (F12) untuk melihat log inisialisasi Cast. Tombol cast di bawah ini akan muncul secara otomatis jika ada perangkat yang tersedia.</p>
+      <div className="mt-8">
+        {/* Tombol ini akan otomatis muncul dan berfungsi jika Cast API berhasil diinisialisasi */}
+        <google-cast-launcher class="cast-button"></google-cast-launcher>
+      </div>
+       <style jsx global>{`
+        .cast-button {
+          --cast-button-size: 2.5rem;
+          --cast-button-color: hsl(var(--foreground));
+          --cast-button-hover-color: hsl(var(--primary));
+        }
+       `}</style>
     </div>
   );
 }
