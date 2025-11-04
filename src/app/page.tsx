@@ -84,31 +84,37 @@ export default function HomePageContainer() {
     }
   };
 
-  const handleCast = () => {
-    if (window.cast && window.cast.framework) {
-      const context = cast.framework.CastContext.getInstance();
-      const session = context.getCurrentSession();
-
-      if (!session) {
-        context.requestSession()
-          .then(() => console.log("Sesi Cast berhasil dimulai!"))
-          .catch((err) => console.error("Gagal memulai sesi Cast:", err));
-      } else {
-        context.endCurrentSession(true)
-            .then(() => console.log("Sesi Cast dihentikan."))
-            .catch((err) => console.error("Gagal menghentikan sesi Cast:", err));
-      }
-    } else {
-      console.warn("Google Cast API tidak tersedia.");
-      alert("Fungsi Google Cast tidak tersedia di perangkat atau browser ini.");
+  const castVideo = (videoId: string) => {
+    const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+    
+    if (!castSession) {
+      alert("Mulai sesi Cast terlebih dahulu melalui ikon Cast di pojok kanan atas.");
+      return;
     }
+
+    const mediaInfo = new chrome.cast.media.MediaInfo(videoId, 'video/youtube');
+    
+    // Ini adalah cara untuk memuat konten YouTube langsung di receiver
+    // Namun, ini memerlukan custom receiver. Untuk default receiver, kita hanya bisa
+    // mengirim URL dasar.
+    // Untuk menyederhanakan, kita akan membuka tab baru dan memutarnya di sana
+    // sebagai gantinya, seperti yang diminta.
+    
+    // Logika alternatif jika menggunakan custom receiver:
+    // const request = new chrome.cast.media.LoadRequest(mediaInfo);
+    // castSession.loadMedia(request)
+    //   .then(() => console.log('Video dikirim ke TV 🎬'))
+    //   .catch((err: any) => console.error('Gagal mengirim video:', err));
+
+    console.log(`Akan memutar video ${videoId} di perangkat Cast.`);
+    openVideoInNewTab(videoId); // Buka di tab baru sebagai fallback
   };
 
   const openVideoInNewTab = (videoId: string) => {
     const playerWindow = window.open("", "_blank");
 
     if (!playerWindow) {
-      alert("Popup diblokir! Izinkan popup untuk DimzTube.");
+      alert("Popup diblokir! Izinkan popup untuk DimzTube agar bisa buka video fullscreen.");
       return;
     }
 
@@ -117,15 +123,78 @@ export default function HomePageContainer() {
         <head>
           <title>DimzTube Player</title>
           <style>
-            body { margin: 0; background-color: black; }
-            iframe { border: none; width: 100vw; height: 100vh; }
+            * { box-sizing: border-box; }
+            html, body {
+              margin: 0; padding: 0; width: 100%; height: 100%;
+              background-color: black;
+              display: flex; justify-content: center; align-items: center;
+              overflow: hidden; font-family: system-ui, sans-serif;
+            }
+            #player { width: 100vw; height: 100vh; }
+            #unmute {
+              position: absolute; bottom: 70px; left: 50%;
+              transform: translateX(-50%);
+              background: rgba(255,255,255,0.15); color: white;
+              font-size: 16px; border: none; padding: 12px 24px;
+              border-radius: 8px; cursor: pointer; transition: background 0.3s;
+              display: none; /* Sembunyikan dulu */
+            }
+            #unmute:hover { background: rgba(255,255,255,0.3); }
           </style>
         </head>
         <body>
-          <iframe 
-            src="https://www.youtube.com/embed/${videoId}?autoplay=1&fs=1" 
-            allow="autoplay; fullscreen"
-          ></iframe>
+          <div id="player"></div>
+          <button id="unmute">🔊 Aktifkan Suara</button>
+
+          <script src="https://www.youtube.com/iframe_api"></script>
+          <script>
+            let player;
+            function onYouTubeIframeAPIReady() {
+              player = new YT.Player('player', {
+                videoId: '${videoId}',
+                playerVars: {
+                  'autoplay': 1,
+                  'controls': 1,
+                  'showinfo': 0,
+                  'rel': 0,
+                  'fs': 1,
+                  'playsinline': 1
+                },
+                events: {
+                  'onReady': onPlayerReady,
+                  'onStateChange': onPlayerStateChange
+                }
+              });
+            }
+
+            function onPlayerReady(event) {
+              event.target.mute();
+              event.target.playVideo();
+              // Coba masuk fullscreen
+              const iframe = document.getElementById('player');
+              const requestFullScreen = iframe.requestFullscreen || iframe.mozRequestFullScreen || iframe.webkitRequestFullScreen;
+              if (requestFullScreen) {
+                requestFullScreen.call(iframe).catch(() => console.log("Gagal masuk fullscreen otomatis"));
+              }
+            }
+
+            function onPlayerStateChange(event) {
+                // Saat video mulai diputar (dan masih di-mute)
+                if (event.data === YT.PlayerState.PLAYING && player.isMuted()) {
+                    const unmuteButton = document.getElementById("unmute");
+                    unmuteButton.style.display = "block";
+
+                    unmuteButton.addEventListener("click", () => {
+                        player.unMute();
+                        unmuteButton.style.display = "none";
+                    });
+                }
+                // Jika video selesai, tutup tab
+                if (event.data === YT.PlayerState.ENDED) {
+                    window.close();
+                }
+            }
+          </script>
         </body>
       </html>
     `);
@@ -134,7 +203,10 @@ export default function HomePageContainer() {
 
   return (
     <div className="flex flex-col h-full">
-        <Navbar onReload={handleReload} onCast={handleCast} />
+        <Navbar onReload={handleReload} onCast={() => {
+            const context = cast.framework.CastContext.getInstance();
+            context.requestSession().catch((err: any) => console.error(err));
+        }} />
         <div className="sticky top-14 z-10 bg-background/95 backdrop-blur">
              <CategoryBar
                 categories={categories}
