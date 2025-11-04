@@ -12,7 +12,7 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { Home, Flame, Users, Library, History, Settings, ListMusic } from 'lucide-react';
+import { Home, Flame, Users, Library, History, Settings, ListMusic, Monitor } from 'lucide-react';
 import Logo from '@/components/logo';
 
 const navItems = [
@@ -72,6 +72,14 @@ export default function MainSidebar() {
                     <SidebarMenuButton as="a" isActive={pathname.startsWith('/settings')} tooltip="Settings">
                         <Settings />
                         <span>Settings</span>
+                    </SidebarMenuButton>
+                </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+                <Link href="/admin/monitor" passHref legacyBehavior>
+                    <SidebarMenuButton as="a" isActive={pathname.startsWith('/admin/monitor')} tooltip="API Monitor">
+                        <Monitor />
+                        <span>API Monitor</span>
                     </SidebarMenuButton>
                 </Link>
             </SidebarMenuItem>
