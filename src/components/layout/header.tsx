@@ -15,7 +15,7 @@ export default function Header() {
         <SidebarTrigger className="h-8 w-8" />
         <Link href="/" className="flex items-center gap-2">
           <Logo />
-          <span className="font-bold text-lg hidden sm:inline-block">DimxTube</span>
+          <span className="font-bold text-lg hidden sm:inline-block">DimzTube</span>
         </Link>
       </div>
 

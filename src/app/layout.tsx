@@ -7,7 +7,7 @@ import MainSidebar from "@/components/layout/main-sidebar";
 import BottomNav from "@/components/layout/bottom-nav";
 
 export const metadata: Metadata = {
-  title: "DimxTube",
+  title: "DimzTube",
   description: "A YouTube-like responsive web application prototype.",
 };
 
