@@ -178,7 +178,7 @@ export const categories = [
   'Kuliner',
   'Berita',
   'Horor',
-  'Next.js',
+  'Film',
   'Pemrograman',
   'Trailer',
   'Komedi',
