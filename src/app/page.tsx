@@ -5,7 +5,7 @@ import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
-import { addToQueue } from '@/lib/queue';
+import { addToQueue, getQueue } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -97,28 +97,18 @@ export default function HomePageContainer() {
     }
 
     const mediaInfo = new chrome.cast.media.MediaInfo(videoId, 'video/youtube');
-    
-    // Ini adalah cara untuk memuat konten YouTube langsung di receiver
-    // Namun, ini memerlukan custom receiver. Untuk default receiver, kita hanya bisa
-    // mengirim URL dasar.
-    // Untuk menyederhanakan, kita akan membuka tab baru dan memutarnya di sana
-    // sebagai gantinya, seperti yang diminta.
-    
-    // Logika alternatif jika menggunakan custom receiver:
-    // const request = new chrome.cast.media.LoadRequest(mediaInfo);
-    // castSession.loadMedia(request)
-    //   .then(() => console.log('Video dikirim ke TV 🎬'))
-    //   .catch((err: any) => console.error('Gagal mengirim video:', err));
-
     console.log(`Akan memutar video ${videoId} di perangkat Cast.`);
-    openVideoInNewTab(videoId); // Buka di tab baru sebagai fallback
+    openVideoInNewTab(videoId); 
   };
 
-  const openVideoInNewTab = (videoId: string, video?: VideoItem) => {
-    if (video) {
-        // Ganti antrian hanya dengan video ini
-        localStorage.setItem("dimztubeQueue", JSON.stringify([video]));
+  const openVideoInNewTab = (startVideoId: string, videoToPlay?: VideoItem) => {
+    if (videoToPlay) {
+      localStorage.setItem("dimztubeQueue", JSON.stringify([videoToPlay]));
     }
+    const queue = getQueue();
+    let currentIndex = queue.findIndex(v => v.id === startVideoId);
+    if (currentIndex === -1) currentIndex = 0;
+
     const playerWindow = window.open("", "_blank");
 
     if (!playerWindow) {
@@ -137,6 +127,7 @@ export default function HomePageContainer() {
               background-color: black;
               display: flex; justify-content: center; align-items: center;
               overflow: hidden; font-family: system-ui, sans-serif;
+              color: white;
             }
             #player { width: 100vw; height: 100vh; }
             #unmute {
@@ -145,40 +136,61 @@ export default function HomePageContainer() {
               background: rgba(255,255,255,0.15); color: white;
               font-size: 16px; border: none; padding: 12px 24px;
               border-radius: 8px; cursor: pointer; transition: background 0.3s;
-              display: none; /* Sembunyikan dulu */
+              display: none;
             }
             #unmute:hover { background: rgba(255,255,255,0.3); }
+            #queueInfo {
+              position: absolute; top: 10px; right: 15px;
+              background: rgba(0,0,0,0.5);
+              padding: 6px 10px;
+              border-radius: 8px;
+              font-size: 13px;
+            }
           </style>
         </head>
         <body>
           <div id="player"></div>
           <button id="unmute">🔊 Aktifkan Suara</button>
+          <div id="queueInfo"></div>
 
           <script src="https://www.youtube.com/iframe_api"></script>
           <script>
+            const queue = ${JSON.stringify(queue)};
+            let index = ${currentIndex};
             let player;
+
+            const infoEl = document.getElementById("queueInfo");
+            const unmuteButton = document.getElementById("unmute");
+
             function onYouTubeIframeAPIReady() {
-              player = new YT.Player('player', {
-                videoId: '${videoId}',
-                playerVars: {
-                  'autoplay': 1,
-                  'controls': 1,
-                  'showinfo': 0,
-                  'rel': 0,
-                  'fs': 1,
-                  'playsinline': 1
-                },
-                events: {
-                  'onReady': onPlayerReady,
-                  'onStateChange': onPlayerStateChange
+              playCurrentVideo();
+            }
+
+            function playCurrentVideo() {
+                if (!queue[index]) {
+                    window.close();
+                    return;
                 }
-              });
+                const currentVideo = queue[index];
+                infoEl.innerText = "Memutar: " + currentVideo.title + " (" + (index + 1) + "/" + queue.length + ")";
+                
+                if (player) {
+                    player.loadVideoById(currentVideo.id);
+                } else {
+                    player = new YT.Player('player', {
+                        videoId: currentVideo.id,
+                        playerVars: { 'autoplay': 1, 'controls': 1, 'fs': 1, 'rel': 0 },
+                        events: {
+                            'onReady': onPlayerReady,
+                            'onStateChange': onPlayerStateChange
+                        }
+                    });
+                }
             }
 
             function onPlayerReady(event) {
               event.target.mute();
               event.target.playVideo();
-              // Coba masuk fullscreen
               const iframe = document.getElementById('player');
               const requestFullScreen = iframe.requestFullscreen || iframe.mozRequestFullScreen || iframe.webkitRequestFullScreen;
               if (requestFullScreen) {
@@ -187,19 +199,20 @@ export default function HomePageContainer() {
             }
 
             function onPlayerStateChange(event) {
-                // Saat video mulai diputar (dan masih di-mute)
                 if (event.data === YT.PlayerState.PLAYING && player.isMuted()) {
-                    const unmuteButton = document.getElementById("unmute");
                     unmuteButton.style.display = "block";
-
-                    unmuteButton.addEventListener("click", () => {
+                    unmuteButton.onclick = () => {
                         player.unMute();
                         unmuteButton.style.display = "none";
-                    });
+                    };
                 }
-                // Jika video selesai, tutup tab
                 if (event.data === YT.PlayerState.ENDED) {
-                    window.close();
+                    index++;
+                    if (index < queue.length) {
+                        playCurrentVideo();
+                    } else {
+                        window.close();
+                    }
                 }
             }
           </script>
