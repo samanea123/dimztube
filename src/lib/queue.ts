@@ -48,3 +48,25 @@ export function getNextVideo(currentVideoId: string): VideoItem | null {
     }
     return null;
 }
+
+export function toggleShuffle() {
+  if (typeof window === 'undefined') return;
+  const s = JSON.parse(localStorage.getItem("dimztubeShuffle") || "false");
+  localStorage.setItem("dimztubeShuffle", JSON.stringify(!s));
+  window.dispatchEvent(new Event("queueUpdated"));
+}
+
+export function toggleRepeat() {
+  if (typeof window === 'undefined') return;
+  const r = JSON.parse(localStorage.getItem("dimztubeRepeat") || "false");
+  localStorage.setItem("dimztubeRepeat", JSON.stringify(!r));
+  window.dispatchEvent(new Event("queueUpdated"));
+}
+
+export function getSettings() {
+  if (typeof window === 'undefined') return { shuffle: false, repeat: false };
+  return {
+    shuffle: JSON.parse(localStorage.getItem("dimztubeShuffle") || "false"),
+    repeat: JSON.parse(localStorage.getItem("dimztubeRepeat") || "false"),
+  };
+}
