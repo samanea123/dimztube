@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import Header from "@/components/layout/header";
 import BottomNav from "@/components/layout/bottom-nav";
 import Script from "next/script";
 
@@ -39,12 +38,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <div className="relative flex min-h-screen w-full flex-col">
-          <Header />
-          <div className="flex flex-1">
-            <main className="flex-1 !bg-background">
+          <main className="flex-1">
               {children}
-            </main>
-          </div>
+          </main>
           <BottomNav />
           <Toaster />
         </div>

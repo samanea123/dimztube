@@ -2,61 +2,37 @@
 
 import { useEffect, useState } from 'react';
 import CategoryBar from '@/components/category-bar';
-import VideoCard from '@/components/video-card';
+import Navbar from '@/components/Navbar';
+import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Tv, MonitorSmartphone } from 'lucide-react';
 
 const categories = [
-  'Semua',
-  'Musik',
-  'Lagu Karaoke',
-  'Film',
-  'Kuliner',
-  'Berita',
-  'Horor',
-  'Wisata',
-  'TV',
-  'Komedi',
-  'Hobi',
+  'Semua', 'Musik', 'Lagu Karaoke', 'Film', 'Kuliner', 'Berita',
+  'Horor', 'Wisata', 'TV', 'Komedi', 'Hobi',
 ];
 
-function VideoGridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-x-4 gap-y-8 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="flex flex-col space-y-2">
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <div className="flex gap-3 items-start">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex flex-col space-y-2 flex-1">
-              <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-4 w-3/5" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default function Home() {
+export default function HomePageContainer() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [showCastModal, setShowCastModal] = useState(false);
 
-  const fetchAndSetVideos = async (category: string) => {
+  const fetchAndSetVideos = async (category: string, forceRefresh = false) => {
     setLoading(true);
     const cacheKey = `videos_${category}`;
     
-    // Coba ambil dari cache dulu
-    const cachedVideos = sessionStorage.getItem(cacheKey);
-    if (cachedVideos) {
-      setVideos(JSON.parse(cachedVideos));
-      setLoading(false);
-      return;
+    if (!forceRefresh) {
+      const cachedVideos = sessionStorage.getItem(cacheKey);
+      if (cachedVideos) {
+        setVideos(JSON.parse(cachedVideos));
+        setLoading(false);
+        return;
+      }
     }
 
-    // Jika tidak ada di cache, ambil dari API
     let newVideos: VideoItem[] = [];
     if (category === 'Semua') {
       newVideos = await getPopularVideos();
@@ -76,24 +52,60 @@ export default function Home() {
     fetchAndSetVideos(selectedCategory);
   }, [selectedCategory]);
 
+  const handleReload = () => {
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('videos_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    fetchAndSetVideos(selectedCategory, true);
+  };
+  
+  const handleSelectCategory = (category: string) => {
+    setSelectedCategory(category);
+  };
+
   return (
-    <main className="flex-1 overflow-y-auto">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur">
-        <CategoryBar
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
-      </div>
-      {loading ? (
-        <VideoGridSkeleton />
-      ) : (
-        <div className="grid grid-cols-1 gap-x-4 gap-y-8 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {videos.map((video) => (
-            <VideoCard key={video.id} video={video} />
-          ))}
+    <div className="flex flex-col h-full">
+        <Navbar onReload={handleReload} onCast={() => setShowCastModal(true)} />
+        <div className="sticky top-14 z-10 bg-background/95 backdrop-blur">
+             <CategoryBar
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={handleSelectCategory}
+            />
         </div>
-      )}
-    </main>
+        <main className="flex-1 overflow-y-auto">
+            <HomeFeed videos={videos} loading={loading} />
+        </main>
+        
+        {/* Cast Modal using Popover */}
+        <Popover open={showCastModal} onOpenChange={setShowCastModal}>
+          <PopoverTrigger asChild>
+            <div />
+          </PopoverTrigger>
+          <PopoverContent className="w-64" align="end">
+             <div className="grid gap-4">
+              <div className="space-y-2">
+                <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
+                <p className="text-sm text-muted-foreground">
+                  Pilih perangkat untuk melakukan cast.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Button variant="ghost" className="justify-start">
+                  <Tv className="mr-2 h-4 w-4" />
+                  TV Ruang Tamu
+                </Button>
+                <Button variant="ghost" className="justify-start">
+                  <MonitorSmartphone className="mr-2 h-4 w-4" />
+                  Chromecast Dapur
+                </Button>
+                 <Button variant="outline" onClick={() => setShowCastModal(false)}>Batal</Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+    </div>
   );
 }
