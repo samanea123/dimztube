@@ -5,9 +5,10 @@ import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
-import { addToQueue, getQueue, setQueue } from '@/lib/queue';
+import { addToQueue, getQueue, setQueue, setCurrentIndex, getSettings } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 import QueueSidebar from '@/components/QueueSidebar';
+import MiniPlayer from '@/components/MiniPlayer';
 
 
 const categories = [
@@ -104,11 +105,12 @@ export default function HomePageContainer() {
 
   const openVideoInNewTab = (startVideoId: string) => {
     const queue = getQueue();
+    const settings = getSettings();
     let currentIndex = queue.findIndex(v => v.id === startVideoId);
     if (currentIndex === -1) {
-        console.error("Video not found in queue, starting from the beginning.");
         currentIndex = 0;
     }
+    setCurrentIndex(currentIndex);
 
     const playerWindow = window.open("", "_blank");
 
@@ -139,7 +141,6 @@ export default function HomePageContainer() {
               border-radius: 8px; cursor: pointer; transition: background 0.3s;
               display: none;
             }
-            #unmute:hover { background: rgba(255,255,255,0.3); }
             #queueInfo {
               position: absolute; top: 10px; right: 15px;
               background: rgba(0,0,0,0.5);
@@ -156,24 +157,61 @@ export default function HomePageContainer() {
 
           <script src="https://www.youtube.com/iframe_api"></script>
           <script>
-            const queue = ${JSON.stringify(queue)};
-            let index = ${currentIndex};
+            const initialQueue = ${JSON.stringify(queue)};
+            const initialSettings = ${JSON.stringify(settings)};
+            let shuffledIndices = [];
+            let originalIndex = ${currentIndex};
             let player;
 
             const infoEl = document.getElementById("queueInfo");
             const unmuteButton = document.getElementById("unmute");
+            const CURRENT_INDEX_KEY = 'dimztubeCurrentIndex';
+
+            function getShuffledIndices(length) {
+                let indices = Array.from({length}, (_, i) => i);
+                for (let i = indices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [indices[i], indices[j]] = [indices[j], indices[i]];
+                }
+                return indices;
+            }
+
+            if (initialSettings.shuffle) {
+                shuffledIndices = getShuffledIndices(initialQueue.length);
+                const currentInShuffled = shuffledIndices.indexOf(originalIndex);
+                // Move current song to the beginning of shuffled queue
+                if (currentInShuffled > -1) {
+                    shuffledIndices.splice(currentInShuffled, 1);
+                    shuffledIndices.unshift(originalIndex);
+                }
+                originalIndex = 0; // Start from beginning of shuffled list
+            }
+
+            let playerIndex = originalIndex;
 
             function onYouTubeIframeAPIReady() {
               playCurrentVideo();
             }
+            
+            function getCurrentVideoFromQueue() {
+                 let queueIndex;
+                 if(initialSettings.shuffle) {
+                     queueIndex = shuffledIndices[playerIndex];
+                 } else {
+                     queueIndex = playerIndex;
+                 }
+                 localStorage.setItem(CURRENT_INDEX_KEY, queueIndex);
+                 window.dispatchEvent(new Event('storage')); // Force update for other tabs
+                 return initialQueue[queueIndex];
+            }
 
             function playCurrentVideo() {
-                if (!queue[index]) {
+                const currentVideo = getCurrentVideoFromQueue();
+                if (!currentVideo) {
                     window.close();
                     return;
                 }
-                const currentVideo = queue[index];
-                infoEl.innerText = "Memutar: " + currentVideo.title + " (" + (index + 1) + "/" + queue.length + ")";
+                infoEl.innerText = "Memutar: " + currentVideo.title + " (" + (playerIndex + 1) + "/" + initialQueue.length + ")";
                 
                 if (player) {
                     player.loadVideoById(currentVideo.id);
@@ -208,11 +246,19 @@ export default function HomePageContainer() {
                     };
                 }
                 if (event.data === YT.PlayerState.ENDED) {
-                    index++;
-                    if (index < queue.length) {
+                    playerIndex++;
+                    if (playerIndex < initialQueue.length) {
                         playCurrentVideo();
                     } else {
-                        window.close();
+                        if (initialSettings.repeat) {
+                           playerIndex = 0;
+                           if (initialSettings.shuffle) {
+                               shuffledIndices = getShuffledIndices(initialQueue.length);
+                           }
+                           playCurrentVideo();
+                        } else {
+                           window.close();
+                        }
                     }
                 }
             }
@@ -225,6 +271,7 @@ export default function HomePageContainer() {
 
   const handlePlayVideo = (video: VideoItem) => {
     setQueue([video]);
+    setCurrentIndex(0);
     openVideoInNewTab(video.id);
   };
   
@@ -249,7 +296,7 @@ export default function HomePageContainer() {
                 onSelectCategory={handleSelectCategory}
             />
         </div>
-        <main className="flex-1 overflow-y-auto pb-16 sm:pb-0">
+        <main className="flex-1 overflow-y-auto pb-32 sm:pb-4">
             <HomeFeed 
                 videos={videos} 
                 loading={loading} 
@@ -258,6 +305,7 @@ export default function HomePageContainer() {
             />
         </main>
         <QueueSidebar onPlay={(videoId) => openVideoInNewTab(videoId)} />
+        <MiniPlayer onPlay={(videoId) => openVideoInNewTab(videoId)} />
     </div>
   );
 }
