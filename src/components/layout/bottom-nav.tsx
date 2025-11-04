@@ -7,10 +7,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/shorts', label: 'Shorts', icon: Flame },
   { href: '/queue', label: 'Queue', icon: ListMusic },
-  { href: '/subscriptions', label: 'Subscriptions', icon: Users },
-  { href: '/library', label: 'Library', icon: Library },
 ];
 
 export default function BottomNav() {

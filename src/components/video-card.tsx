@@ -5,11 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Play, Plus } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import type { Video } from '@/lib/data';
+import type { VideoItem } from '@/lib/youtube';
+
 
 type VideoCardProps = {
-  video: Video;
+  video: VideoItem;
   variant?: 'default' | 'compact';
   onPlay?: () => void;
   onAddToQueue?: () => void;
@@ -17,8 +17,8 @@ type VideoCardProps = {
 
 export default function VideoCard({ video, variant = 'default', onPlay, onAddToQueue }: VideoCardProps) {
   
-  const thumbnail = PlaceHolderImages.find(img => img.id === video.thumbnailId);
-  const avatar = PlaceHolderImages.find(img => img.id === video.channel.avatarId);
+  const thumbnail = video.thumbnailUrl;
+  const avatar = video.channelAvatarUrl;
 
   const cardContent = (
     <>
@@ -28,7 +28,7 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
       )}>
          {thumbnail && (
           <Image
-            src={thumbnail.imageUrl}
+            src={thumbnail}
             alt={video.title}
             fill
             className="rounded-lg object-cover transition-transform group-hover:scale-105"
@@ -40,8 +40,8 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
         <div className="flex gap-3 items-start">
           {variant === 'default' && (
             <Avatar className="mt-1 flex-shrink-0">
-              {avatar && <AvatarImage src={avatar.imageUrl} alt={video.channel.name} />}
-              <AvatarFallback>{video.channel.name.slice(0, 1)}</AvatarFallback>
+              {avatar && <AvatarImage src={avatar} alt={video.channelTitle} />}
+              <AvatarFallback>{video.channelTitle.slice(0, 1)}</AvatarFallback>
             </Avatar>
           )}
           <div>
@@ -53,8 +53,8 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
               'text-muted-foreground',
               variant === 'default' ? 'text-sm mt-1' : 'text-xs mt-1'
             )}>
-              <p>{video.channel.name}</p>
-              <p>{video.views} views • {video.uploadedAt}</p>
+              <p>{video.channelTitle}</p>
+              <p>{video.viewCount} views • {video.publishedAt}</p>
             </div>
           </div>
         </div>
@@ -84,7 +84,7 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
           )}>
              {thumbnail && (
               <Image
-                src={thumbnail.imageUrl}
+                src={thumbnail}
                 alt={video.title}
                 fill
                 className="rounded-lg object-cover transition-transform group-hover:scale-105"
@@ -98,8 +98,8 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
         <div className="flex gap-3 items-start">
           {variant === 'default' && (
             <Avatar className="mt-1 flex-shrink-0">
-              {avatar && <AvatarImage src={avatar.imageUrl} alt={video.channel.name} />}
-              <AvatarFallback>{video.channel.name.slice(0, 1)}</AvatarFallback>
+              {avatar && <AvatarImage src={avatar} alt={video.channelTitle} />}
+              <AvatarFallback>{video.channelTitle.slice(0, 1)}</AvatarFallback>
             </Avatar>
           )}
           <div>
@@ -111,8 +111,8 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
               'text-muted-foreground',
               'text-sm mt-1'
             )}>
-              <p>{video.channel.name}</p>
-              <p>{video.views} views • {video.uploadedAt}</p>
+              <p>{video.channelTitle}</p>
+              <p>{video.viewCount} views • {video.publishedAt}</p>
             </div>
           </div>
         </div>

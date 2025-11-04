@@ -17,14 +17,10 @@ import Logo from '@/components/logo';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/shorts', label: 'Shorts', icon: Flame },
-  { href: '/subscriptions', label: 'Subscriptions', icon: Users },
+  { href: '/queue', label: 'Queue', icon: ListMusic },
 ];
 
 const libraryItems = [
-  { href: '/library', label: 'Library', icon: Library },
-  { href: '/history', label: 'History', icon: History },
-  { href: '/queue', label: 'Queue', icon: ListMusic },
 ];
 
 export default function MainSidebar() {
