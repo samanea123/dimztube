@@ -171,18 +171,18 @@ export const videos: Video[] = [
 ];
 
 export const categories = [
-  'All',
-  'Music',
-  'Gaming',
-  'Movies',
-  'Live',
-  'News',
+  'Semua',
+  'Musik',
+  'Game',
+  'Film',
+  'Langsung',
+  'Berita',
   'React',
   'Next.js',
-  'Programming',
-  'Trailers',
-  'Comedy',
-  'Podcasts',
+  'Pemrograman',
+  'Trailer',
+  'Komedi',
+  'Podcast',
 ];
 
 export const comments: Comment[] = [

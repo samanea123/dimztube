@@ -9,7 +9,7 @@ type CategoryBarProps = {
 };
 
 export default function CategoryBar({ categories }: CategoryBarProps) {
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState('Semua');
 
   return (
     <div className="px-4 border-b">
