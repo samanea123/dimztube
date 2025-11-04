@@ -15,8 +15,7 @@ type VideoCardProps = {
 };
 
 export default function VideoCard({ video, variant = 'default', onPlay, onAddToQueue }: VideoCardProps) {
-  const cardContent = (
-    <div className={cn('flex flex-col space-y-2 group')}>
+  const commonCardContent = (
       <div className={cn(
         "relative aspect-video",
         variant === 'default' ? 'w-full' : 'w-40 flex-shrink-0'
@@ -32,6 +31,9 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
         )}
         <Badge variant="secondary" className="absolute bottom-1 right-1">{video.duration}</Badge>
       </div>
+  );
+
+  const textContent = (
       <div className={cn(variant === 'compact' && 'flex-grow')}>
         <div className={cn(variant === 'default' && 'flex gap-3 items-start')}>
           {variant === 'default' && (
@@ -55,34 +57,39 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
           </div>
         </div>
       </div>
-      {(onPlay || onAddToQueue) && (
-        <div className="flex gap-2 pt-1">
-          {onPlay && (
-            <Button onClick={(e) => { e.stopPropagation(); onPlay(); }} size="sm" className="flex-1">
-              <Play className="mr-2 h-4 w-4" />
-              Play
-            </Button>
-          )}
-          {onAddToQueue && (
-            <Button onClick={(e) => { e.stopPropagation(); onAddToQueue(); }} size="sm" variant="secondary" className="flex-1">
-              <Plus className="mr-2 h-4 w-4" />
-              Queue
-            </Button>
-          )}
-        </div>
-      )}
-    </div>
   );
-
+  
   // If no actions, wrap with Link component for default navigation
   if (!onPlay && !onAddToQueue) {
     return (
-      <Link href={`/watch?v=${video.id}`}>
-        {cardContent}
+      <Link href={`/watch?v=${video.id}`} className="flex flex-col space-y-2 group">
+        {commonCardContent}
+        {textContent}
       </Link>
     );
   }
   
   // Otherwise, the div with buttons handles interactions
-  return cardContent;
+  return (
+     <div className="flex flex-col space-y-2">
+      <div className="group cursor-pointer" onClick={onPlay}>
+        {commonCardContent}
+      </div>
+      {textContent}
+      <div className="flex gap-2 pt-1">
+        {onPlay && (
+          <Button onClick={onPlay} size="sm" className="flex-1">
+            <Play className="mr-2 h-4 w-4" />
+            Play
+          </Button>
+        )}
+        {onAddToQueue && (
+          <Button onClick={onAddToQueue} size="sm" variant="secondary" className="flex-1">
+            <Plus className="mr-2 h-4 w-4" />
+            Queue
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }

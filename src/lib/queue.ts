@@ -2,14 +2,22 @@
 
 import type { VideoItem } from './youtube';
 
+function dispatchQueueUpdate() {
+  window.dispatchEvent(new Event("queueUpdated"));
+}
+
+export function setQueue(videos: VideoItem[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem("dimztubeQueue", JSON.stringify(videos));
+  dispatchQueueUpdate();
+}
+
 export function addToQueue(video: VideoItem) {
   if (typeof window === 'undefined') return;
-  const currentQueue: VideoItem[] = JSON.parse(localStorage.getItem("dimztubeQueue") || "[]");
-  // Hindari duplikat
+  const currentQueue: VideoItem[] = getQueue();
   if (!currentQueue.find(v => v.id === video.id)) {
     currentQueue.push(video);
-    localStorage.setItem("dimztubeQueue", JSON.stringify(currentQueue));
-    window.dispatchEvent(new Event("queueUpdated"));
+    setQueue(currentQueue);
   }
 }
 
@@ -22,14 +30,13 @@ export function removeFromQueue(index: number) {
   if (typeof window === 'undefined') return;
   const queue = getQueue();
   queue.splice(index, 1);
-  localStorage.setItem("dimztubeQueue", JSON.stringify(queue));
-  window.dispatchEvent(new Event("queueUpdated"));
+  setQueue(queue);
 }
 
 export function clearQueue() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem("dimztubeQueue");
-  window.dispatchEvent(new Event("queueUpdated"));
+  dispatchQueueUpdate();
 }
 
 export function getNextVideo(currentVideoId: string): VideoItem | null {

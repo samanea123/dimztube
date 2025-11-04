@@ -5,7 +5,7 @@ import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
-import { addToQueue, getQueue } from '@/lib/queue';
+import { addToQueue, getQueue, setQueue } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 import QueueSidebar from '@/components/QueueSidebar';
 
@@ -102,15 +102,13 @@ export default function HomePageContainer() {
     openVideoInNewTab(videoId); 
   };
 
-  const openVideoInNewTab = (startVideoId: string, videoToPlay?: VideoItem) => {
-    if (videoToPlay) {
-      // Replace queue with only this video
-      localStorage.setItem("dimztubeQueue", JSON.stringify([videoToPlay]));
-      window.dispatchEvent(new Event("queueUpdated")); // Notify sidebar
-    }
+  const openVideoInNewTab = (startVideoId: string) => {
     const queue = getQueue();
     let currentIndex = queue.findIndex(v => v.id === startVideoId);
-    if (currentIndex === -1) currentIndex = 0;
+    if (currentIndex === -1) {
+        console.error("Video not found in queue, starting from the beginning.");
+        currentIndex = 0;
+    }
 
     const playerWindow = window.open("", "_blank");
 
@@ -225,6 +223,11 @@ export default function HomePageContainer() {
     playerWindow.document.close();
   };
 
+  const handlePlayVideo = (video: VideoItem) => {
+    setQueue([video]);
+    openVideoInNewTab(video.id);
+  };
+  
   const handleAddToQueue = (video: VideoItem) => {
     addToQueue(video);
     toast({
@@ -250,7 +253,7 @@ export default function HomePageContainer() {
             <HomeFeed 
                 videos={videos} 
                 loading={loading} 
-                onPlayVideo={(video) => openVideoInNewTab(video.id, video)} 
+                onPlayVideo={handlePlayVideo} 
                 onAddToQueue={handleAddToQueue}
             />
         </main>
