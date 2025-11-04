@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/layout/header";
 import BottomNav from "@/components/layout/bottom-nav";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "DimzTube",
@@ -47,6 +48,7 @@ export default function RootLayout({
           <BottomNav />
           <Toaster />
         </div>
+        <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_framework.js" strategy="lazyOnload" />
       </body>
     </html>
   );

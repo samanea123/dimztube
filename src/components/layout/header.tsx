@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Search, Mic, Cast, Bell } from "lucide-react";
+import { Search, Mic, Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Logo from "@/components/logo";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import CastButton from "@/components/cast-button";
 
 export default function Header() {
   const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar1');
@@ -34,9 +35,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="hidden sm:flex">
-          <Cast className="h-5 w-5" />
-        </Button>
+        <CastButton />
         <Button variant="ghost" size="icon" className="hidden sm:flex">
           <Bell className="h-5 w-5" />
         </Button>
