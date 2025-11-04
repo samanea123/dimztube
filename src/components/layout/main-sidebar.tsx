@@ -35,35 +35,29 @@ export default function MainSidebar() {
         <SidebarMenu>
           {navItems.map((item) => (
             <SidebarMenuItem key={item.href}>
-              <Link href={item.href} legacyBehavior passHref>
-                <SidebarMenuButton
-                  asChild
-                  isActive={(pathname === '/' && item.href === '/') || (pathname.startsWith(item.href) && item.href !== '/')}
-                  tooltip={item.label}
-                >
-                  <a>
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </a>
-                </SidebarMenuButton>
-              </Link>
+              <SidebarMenuButton
+                as={Link}
+                href={item.href}
+                isActive={(pathname === '/' && item.href === '/') || (pathname.startsWith(item.href) && item.href !== '/')}
+                tooltip={item.label}
+              >
+                <item.icon />
+                <span>{item.label}</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
           <SidebarSeparator />
           {libraryItems.map((item) => (
              <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
-                    <SidebarMenuButton 
-                        asChild
-                        isActive={pathname.startsWith(item.href)}
-                        tooltip={item.label}
-                    >
-                        <a>
-                            <item.icon />
-                            <span>{item.label}</span>
-                        </a>
-                    </SidebarMenuButton>
-                </Link>
+                <SidebarMenuButton
+                    as={Link}
+                    href={item.href}
+                    isActive={pathname.startsWith(item.href)}
+                    tooltip={item.label}
+                >
+                    <item.icon />
+                    <span>{item.label}</span>
+                </SidebarMenuButton>
              </SidebarMenuItem>
           ))}
         </SidebarMenu>
@@ -71,14 +65,10 @@ export default function MainSidebar() {
       <SidebarFooter>
         <SidebarMenu>
             <SidebarMenuItem>
-                <Link href="/settings" legacyBehavior passHref>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')} tooltip="Settings">
-                        <a>
-                            <Settings />
-                            <span>Settings</span>
-                        </a>
-                    </SidebarMenuButton>
-                </Link>
+                <SidebarMenuButton as={Link} href="/settings" isActive={pathname.startsWith('/settings')} tooltip="Settings">
+                    <Settings />
+                    <span>Settings</span>
+                </SidebarMenuButton>
             </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
