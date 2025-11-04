@@ -7,6 +7,7 @@ import HomeFeed from '@/components/HomeFeed';
 import { getPopularVideos, getVideosByCategory, type VideoItem } from '@/lib/youtube';
 import { addToQueue, getQueue } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
+import QueueSidebar from '@/components/QueueSidebar';
 
 
 const categories = [
@@ -103,7 +104,9 @@ export default function HomePageContainer() {
 
   const openVideoInNewTab = (startVideoId: string, videoToPlay?: VideoItem) => {
     if (videoToPlay) {
+      // Replace queue with only this video
       localStorage.setItem("dimztubeQueue", JSON.stringify([videoToPlay]));
+      window.dispatchEvent(new Event("queueUpdated")); // Notify sidebar
     }
     const queue = getQueue();
     let currentIndex = queue.findIndex(v => v.id === startVideoId);
@@ -243,7 +246,7 @@ export default function HomePageContainer() {
                 onSelectCategory={handleSelectCategory}
             />
         </div>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-16 sm:pb-0">
             <HomeFeed 
                 videos={videos} 
                 loading={loading} 
@@ -251,6 +254,7 @@ export default function HomePageContainer() {
                 onAddToQueue={handleAddToQueue}
             />
         </main>
+        <QueueSidebar onPlay={(videoId) => openVideoInNewTab(videoId)} />
     </div>
   );
 }
