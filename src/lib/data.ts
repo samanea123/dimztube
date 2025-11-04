@@ -180,7 +180,7 @@ export const categories = [
   'Horor',
   'Film',
   'Wisata',
-  'Trailer',
+  'TV',
   'Komedi',
   'Hobi',
 ];
