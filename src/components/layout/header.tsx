@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Search, Mic, Bell, RotateCw } from "lucide-react";
+import { Search, Mic, Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Logo from "@/components/logo";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -32,12 +32,12 @@ export default function Header() {
           <Button variant="ghost" size="icon" className="ml-2 flex-shrink-0">
             <Mic className="h-5 w-5" />
           </Button>
-          <CastButton />
-          <ReloadButton />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        <ReloadButton />
+        <CastButton />
         <Button variant="ghost" size="icon" className="hidden sm:flex">
           <Bell className="h-5 w-5" />
         </Button>

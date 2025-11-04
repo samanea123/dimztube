@@ -1,87 +1,45 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Cast } from 'lucide-react';
-
-declare global {
-  interface Window {
-    __onGCastApiAvailable?: (isAvailable: boolean) => void;
-    chrome: any;
-    cast: any;
-  }
-}
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Cast, Tv, MonitorSmartphone } from 'lucide-react';
 
 export default function CastButton() {
-  const [castState, setCastState] = useState<string>('no_devices_available');
-  const [isApiAvailable, setIsApiAvailable] = useState(false);
-
-  useEffect(() => {
-    const initializeCastApi = () => {
-      if (window.chrome && window.chrome.cast && window.chrome.cast.framework) {
-        const castContext = window.chrome.cast.framework.CastContext.getInstance();
-        castContext.setOptions({
-          receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-          autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-        });
-
-        const handleCastStateChange = (event: any) => {
-          setCastState(event.castState);
-        };
-        
-        castContext.addEventListener(
-          window.chrome.cast.framework.CastContextEventType.CAST_STATE_CHANGED,
-          handleCastStateChange
-        );
-
-        setIsApiAvailable(true);
-        setCastState(castContext.getCastState());
-
-        return () => {
-            castContext.removeEventListener(
-                window.chrome.cast.framework.CastContextEventType.CAST_STATE_CHANGED,
-                handleCastStateChange
-            );
-        };
-      }
-    };
-
-    if (window.cast && window.cast.framework) {
-      initializeCastApi();
-    } else {
-      window.__onGCastApiAvailable = (isAvailable) => {
-        if (isAvailable) {
-          initializeCastApi();
-        }
-      };
-    }
-  }, []);
-
-  const handleCastClick = () => {
-    if (!window.chrome.cast) return;
-    
-    const castContext = window.chrome.cast.framework.CastContext.getInstance();
-    castContext.requestSession((session: any) => {
-      console.log('Session initialized:', session);
-    }, (error: any) => {
-      console.error('Session initialization error:', error);
-    });
-  };
-  
-  if (!isApiAvailable || castState === 'no_devices_available') {
-    return null;
-  }
-
-  const isConnected = castState === 'connected';
-
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={handleCastClick}
-      className={`ml-2 flex-shrink-0 ${isConnected ? 'text-primary' : ''}`}
-    >
-      <Cast className="h-5 w-5" />
-    </Button>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hover:text-red-500"
+          aria-label="Cast to device"
+        >
+          <Cast className="h-5 w-5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64">
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
+            <p className="text-sm text-muted-foreground">
+              Pilih perangkat untuk melakukan cast.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Button variant="ghost" className="justify-start">
+              <Tv className="mr-2 h-4 w-4" />
+              TV Ruang Tamu
+            </Button>
+            <Button variant="ghost" className="justify-start">
+              <MonitorSmartphone className="mr-2 h-4 w-4" />
+              Chromecast Dapur
+            </Button>
+             <PopoverTrigger asChild>
+                <Button variant="outline">Batal</Button>
+             </PopoverTrigger>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
