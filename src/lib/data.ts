@@ -182,7 +182,7 @@ export const categories = [
   'Wisata',
   'Trailer',
   'Komedi',
-  'Podcast',
+  'Hobi',
 ];
 
 export const comments: Comment[] = [
