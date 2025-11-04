@@ -11,6 +11,7 @@ const shortsVideos = videos.slice(0, 5);
 
 export default function ShortsPage() {
   const getAvatar = (id: string) => PlaceHolderImages.find((img) => img.id === id);
+  const getThumbnail = (id: string) => PlaceHolderImages.find((img) => img.id === id);
 
   return (
     <div className="relative h-[calc(100vh_-_theme(spacing.14)_-_env(safe-area-inset-bottom))] md:h-[calc(100vh_-_theme(spacing.14))] w-full flex justify-center bg-black">
@@ -18,7 +19,7 @@ export default function ShortsPage() {
         {shortsVideos.map((video, index) => (
           <div key={video.id} className="h-full w-full relative flex-shrink-0 snap-start">
             <Image
-              src={video.thumbnailId}
+              src={getThumbnail(video.thumbnailId)?.imageUrl || ''}
               alt={video.title}
               fill
               className="object-cover"

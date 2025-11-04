@@ -2,44 +2,46 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { VideoItem } from '@/lib/youtube';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Play, Plus } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import type { Video } from '@/lib/data';
 
 type VideoCardProps = {
-  video: VideoItem;
+  video: Video;
   variant?: 'default' | 'compact';
   onPlay?: () => void;
   onAddToQueue?: () => void;
 };
 
 export default function VideoCard({ video, variant = 'default', onPlay, onAddToQueue }: VideoCardProps) {
-  const commonCardContent = (
+  
+  const thumbnail = PlaceHolderImages.find(img => img.id === video.thumbnailId);
+  const avatar = PlaceHolderImages.find(img => img.id === video.channel.avatarId);
+
+  const cardContent = (
+    <>
       <div className={cn(
         "relative aspect-video",
         variant === 'default' ? 'w-full' : 'w-40 flex-shrink-0'
       )}>
-         {video.thumbnailUrl && (
+         {thumbnail && (
           <Image
-            src={video.thumbnailUrl}
+            src={thumbnail.imageUrl}
             alt={video.title}
             fill
             className="rounded-lg object-cover transition-transform group-hover:scale-105"
             data-ai-hint="video thumbnail"
           />
         )}
-        <Badge variant="secondary" className="absolute bottom-1 right-1">{video.duration}</Badge>
       </div>
-  );
-
-  const textContent = (
-      <div className={cn(variant === 'compact' && 'flex-grow')}>
-        <div className={cn(variant === 'default' && 'flex gap-3 items-start')}>
+      <div className={cn('flex-grow', variant === 'default' ? 'mt-3' : 'ml-3')}>
+        <div className="flex gap-3 items-start">
           {variant === 'default' && (
             <Avatar className="mt-1 flex-shrink-0">
-              {video.channelAvatarUrl && <AvatarImage src={video.channelAvatarUrl} alt={video.channelTitle} />}
-              <AvatarFallback>{video.channelTitle.slice(0, 1)}</AvatarFallback>
+              {avatar && <AvatarImage src={avatar.imageUrl} alt={video.channel.name} />}
+              <AvatarFallback>{video.channel.name.slice(0, 1)}</AvatarFallback>
             </Avatar>
           )}
           <div>
@@ -51,31 +53,71 @@ export default function VideoCard({ video, variant = 'default', onPlay, onAddToQ
               'text-muted-foreground',
               variant === 'default' ? 'text-sm mt-1' : 'text-xs mt-1'
             )}>
-              <p>{video.channelTitle}</p>
-              <p>{video.viewCount} views • {video.publishedAt}</p>
+              <p>{video.channel.name}</p>
+              <p>{video.views} views • {video.uploadedAt}</p>
             </div>
           </div>
         </div>
       </div>
+    </>
+  );
+
+  const containerClasses = cn(
+    "group",
+    variant === 'compact' ? 'flex items-start' : 'flex flex-col'
   );
   
-  // If no actions, wrap with Link component for default navigation
   if (!onPlay && !onAddToQueue) {
     return (
-      <Link href={`/watch?v=${video.id}`} className="flex flex-col space-y-2 group">
-        {commonCardContent}
-        {textContent}
+      <Link href={`/watch?v=${video.id}`} className={containerClasses}>
+        {cardContent}
       </Link>
     );
   }
   
-  // Otherwise, the div with buttons handles interactions
   return (
      <div className="flex flex-col space-y-2">
       <div className="group cursor-pointer" onClick={onPlay}>
-        {commonCardContent}
+         <div className={cn(
+            "relative aspect-video",
+            variant === 'default' ? 'w-full' : 'w-40 flex-shrink-0'
+          )}>
+             {thumbnail && (
+              <Image
+                src={thumbnail.imageUrl}
+                alt={video.title}
+                fill
+                className="rounded-lg object-cover transition-transform group-hover:scale-105"
+                data-ai-hint="video thumbnail"
+              />
+            )}
+          </div>
       </div>
-      {textContent}
+
+       <div className={cn('flex-grow', variant === 'default' ? 'mt-3' : 'ml-3')}>
+        <div className="flex gap-3 items-start">
+          {variant === 'default' && (
+            <Avatar className="mt-1 flex-shrink-0">
+              {avatar && <AvatarImage src={avatar.imageUrl} alt={video.channel.name} />}
+              <AvatarFallback>{video.channel.name.slice(0, 1)}</AvatarFallback>
+            </Avatar>
+          )}
+          <div>
+            <h3 className={cn(
+              'line-clamp-2',
+              'font-semibold text-base'
+            )}>{video.title}</h3>
+            <div className={cn(
+              'text-muted-foreground',
+              'text-sm mt-1'
+            )}>
+              <p>{video.channel.name}</p>
+              <p>{video.views} views • {video.uploadedAt}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex gap-2 pt-1">
         {onPlay && (
           <Button onClick={onPlay} size="sm" className="flex-1">
