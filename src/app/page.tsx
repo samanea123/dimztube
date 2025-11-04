@@ -10,7 +10,6 @@ const categories = [
   "Kuliner",
   "Berita",
   "Horor",
-  "Film",
   "Wisata",
   "TV",
   "Komedi",
