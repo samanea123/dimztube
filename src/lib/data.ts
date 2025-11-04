@@ -179,7 +179,7 @@ export const categories = [
   'Berita',
   'Horor',
   'Film',
-  'Pemrograman',
+  'Wisata',
   'Trailer',
   'Komedi',
   'Podcast',
