@@ -1,7 +1,21 @@
 import CategoryBar from "@/components/category-bar";
 import VideoCard from "@/components/video-card";
-import { categories } from "@/lib/data";
 import { getPopularVideos, type VideoItem } from "@/lib/youtube";
+
+const categories = [
+  "Semua",
+  "Musik",
+  "Lagu Karaoke",
+  "Film",
+  "Kuliner",
+  "Berita",
+  "Horor",
+  "Film",
+  "Wisata",
+  "TV",
+  "Komedi",
+  "Hobi",
+];
 
 export default async function Home() {
   const videos: VideoItem[] = await getPopularVideos();

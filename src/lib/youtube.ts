@@ -1,6 +1,6 @@
 'use server';
 
-import {- T_STRING_LITERAL_START-}from 'googleapis';- T_STRING_LITERAL_END-}
+import { google } from 'googleapis';
 
 const API_KEY = process.env.YOUTUBE_API_KEY;
 
