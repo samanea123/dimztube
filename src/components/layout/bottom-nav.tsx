@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Flame, PlusCircle, Users, Library } from 'lucide-react';
+import { Home, Flame, PlusCircle, Users, Library, ListMusic } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/shorts', label: 'Shorts', icon: Flame },
-  { href: '#', label: 'Add', icon: PlusCircle },
+  { href: '/queue', label: 'Queue', icon: ListMusic },
   { href: '/subscriptions', label: 'Subscriptions', icon: Users },
   { href: '/library', label: 'Library', icon: Library },
 ];

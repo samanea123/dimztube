@@ -12,7 +12,7 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { Home, Flame, Users, Library, History, Settings } from 'lucide-react';
+import { Home, Flame, Users, Library, History, Settings, ListMusic } from 'lucide-react';
 import Logo from '@/components/logo';
 
 const navItems = [
@@ -24,6 +24,7 @@ const navItems = [
 const libraryItems = [
   { href: '/library', label: 'Library', icon: Library },
   { href: '/history', label: 'History', icon: History },
+  { href: '/queue', label: 'Queue', icon: ListMusic },
 ];
 
 export default function MainSidebar() {
