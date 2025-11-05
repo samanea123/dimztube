@@ -98,7 +98,8 @@ export default function SearchBar({
 
       setIsFocused(false);
       setIsMobileOpen(false);
-      router.push(`/search?q=${encodeURIComponent(term)}&category=${encodeURIComponent(category)}`);
+      // Navigate to home page with search query
+      router.push(`/?q=${encodeURIComponent(term)}`);
   };
 
   useEffect(() => {

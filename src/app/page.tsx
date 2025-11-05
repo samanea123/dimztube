@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import CategoryBar from '@/components/category-bar';
 import Navbar from '@/components/Navbar';
 import HomeFeed from '@/components/HomeFeed';
@@ -24,7 +25,10 @@ const categories = [
   'Horor', 'Wisata', 'TV', 'Komedi', 'Hobi',
 ];
 
-export default function HomePageContainer() {
+function HomePageContent() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get('q');
+  
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -36,7 +40,6 @@ export default function HomePageContainer() {
     const storedUsage = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
     let keys: KeyUsage[] = storedUsage;
 
-    // Initialize if not present or length is wrong
     if (keys.length !== totalKeys) {
         keys = Array.from({ length: totalKeys }, (_, i) => ({ id: i, used: 0 }));
     }
@@ -44,40 +47,73 @@ export default function HomePageContainer() {
     const keyToUpdate = keys.find(k => k.id === apiKeyIndex);
     if (keyToUpdate) {
         keyToUpdate.used += cost;
-    } else {
+    } else if (apiKeyIndex >= 0 && apiKeyIndex < totalKeys) {
         keys[apiKeyIndex] = { id: apiKeyIndex, used: cost };
     }
     
     localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(keys));
-    // Dispatch an event to notify the monitor page
     window.dispatchEvent(new Event('storage'));
   };
 
-  const fetchAndSetVideos = async (category: string, forceRefresh = false) => {
+  const fetchAndSetVideos = async (category: string, searchQuery: string | null, forceRefresh = false) => {
     setLoading(true);
-    const cacheKey = `videos_${category}`;
+    const cacheKey = searchQuery ? `search_${searchQuery}_${category}` : `videos_${category}`;
     
     if (!forceRefresh) {
-      const cachedVideos = sessionStorage.getItem(cacheKey);
-      if (cachedVideos) {
-        setVideos(JSON.parse(cachedVideos));
+      const cachedData = sessionStorage.getItem(cacheKey);
+      if (cachedData) {
+        setVideos(JSON.parse(cachedData));
         setLoading(false);
         return;
       }
     }
 
-    let response: VideoApiResponse | null = null;
     try {
-      if (category === 'Semua') {
-        response = await getPopularVideos();
+      let data: VideoItem[] = [];
+      let apiKeyIndex = -1;
+      let cost = 0;
+      let totalApiKeys = 0;
+
+      if (searchQuery) {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`);
+        const searchData = await res.json();
+        if (res.ok && searchData.items) {
+          // The search API returns a simpler format, let's adapt it.
+           data = searchData.items.map((item: any) => ({
+             id: item.id,
+             title: item.title,
+             thumbnailUrl: item.thumbnail,
+             channelTitle: item.channel,
+             viewCount: '',
+             publishedAt: '',
+             duration: ''
+          }));
+          // Note: The proxy search API doesn't return cost/key info, so we can't track usage here.
+        } else {
+            toast({ variant: "destructive", title: "Error Pencarian", description: searchData.error || "Gagal memuat hasil." });
+        }
       } else {
-        response = await getVideosByCategory(category);
+        let response: VideoApiResponse | null = null;
+        if (category === 'Semua') {
+          response = await getPopularVideos();
+        } else {
+          response = await getVideosByCategory(category);
+        }
+        
+        if (response) {
+          data = response.videos;
+          apiKeyIndex = response.apiKeyIndex;
+          cost = response.cost;
+          totalApiKeys = response.totalApiKeys;
+        }
       }
       
-      if (response && response.videos.length > 0) {
-        sessionStorage.setItem(cacheKey, JSON.stringify(response.videos));
-        setVideos(response.videos);
-        updateKeyUsage(response.apiKeyIndex, response.cost, response.totalApiKeys);
+      if (data.length > 0) {
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        setVideos(data);
+        if (apiKeyIndex !== -1) {
+          updateKeyUsage(apiKeyIndex, cost, totalApiKeys);
+        }
       } else {
         setVideos([]);
       }
@@ -88,26 +124,30 @@ export default function HomePageContainer() {
 
     setLoading(false);
   };
-
+  
   useEffect(() => {
     window['__onGCastApiAvailable'] = (isAvailable: boolean) => {
       if (isAvailable) {
         initializeCastApi();
       }
     };
-    fetchAndSetVideos(selectedCategory);
-  }, [selectedCategory]);
+     // if there is a search query 'q', we ignore the selected category from the bar
+     // and pass the query to our fetch function.
+    fetchAndSetVideos(q ? 'Semua' : selectedCategory, q);
+  }, [selectedCategory, q]);
 
   const handleReload = () => {
     Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('videos_')) {
+      if (key.startsWith('videos_') || key.startsWith('search_')) {
         sessionStorage.removeItem(key);
       }
     });
-    fetchAndSetVideos(selectedCategory, true);
+    fetchAndSetVideos(selectedCategory, q, true);
   };
   
   const handleSelectCategory = (category: string) => {
+    // When a category is selected, clear any search query
+    window.history.pushState({}, '', '/');
     setSelectedCategory(category);
   };
 
@@ -118,7 +158,6 @@ export default function HomePageContainer() {
             receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
             autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
         });
-        console.log('Google Cast API berhasil diinisialisasi.');
     } catch(error) {
         console.error('Gagal inisialisasi Google Cast API:', error);
     }
@@ -133,13 +172,11 @@ export default function HomePageContainer() {
          setQueue([videoToPlay]);
          setCurrentIndex(0);
       } else {
-        // Fallback for video not in the main list (e.g. from queue page or search)
         const videoFromQueue = getQueue().find(v => v.id === startVideoId);
         if (videoFromQueue) {
             setQueue([videoFromQueue]);
             setCurrentIndex(0);
         } else {
-            // If it's not anywhere, just create a new queue with a basic object
             setQueue([{ id: startVideoId, title: 'Video', thumbnailUrl: '', channelTitle: '' }]);
             setCurrentIndex(0);
         }
@@ -167,18 +204,9 @@ export default function HomePageContainer() {
   };
   
   const handleSelectVideoFromSearch = (video: SearchVideoItem) => {
-    const videoToPlay: VideoItem = {
-        id: video.id,
-        title: video.title,
-        channelTitle: video.channel,
-        thumbnailUrl: video.thumbnail,
-        viewCount: '',
-        publishedAt: '',
-        duration: '',
-    }
-    setQueue([videoToPlay]);
-    setCurrentIndex(0);
-    openVideoInNewTab(video.id);
+    // This now navigates to the home page with a search query
+     const term = video.title;
+     window.location.href = `/?q=${encodeURIComponent(term)}`;
   }
 
   return (
@@ -186,8 +214,10 @@ export default function HomePageContainer() {
         <Navbar 
           onReload={handleReload} 
           onCast={() => {
-            const context = cast.framework.CastContext.getInstance();
-            context.requestSession().catch((err: any) => console.error(err));
+             try {
+                const context = cast.framework.CastContext.getInstance();
+                context.requestSession().catch((err: any) => console.error(err));
+             } catch(e) { console.error(e) }
           }}
           category={selectedCategory}
           onSelectVideo={handleSelectVideoFromSearch}
@@ -195,11 +225,16 @@ export default function HomePageContainer() {
         <div className="sticky top-14 z-10 bg-background/95 backdrop-blur">
              <CategoryBar
                 categories={categories}
-                selectedCategory={selectedCategory}
+                selectedCategory={q ? 'Semua' : selectedCategory}
                 onSelectCategory={handleSelectCategory}
             />
         </div>
         <main className="flex-1 overflow-y-auto pb-32 sm:pb-4">
+             {q && (
+              <h1 className="text-2xl font-bold mb-0 pt-6 px-4">
+                Hasil untuk: <span className="text-primary">{q}</span>
+              </h1>
+            )}
             <HomeFeed 
                 videos={videos} 
                 loading={loading} 
@@ -211,4 +246,14 @@ export default function HomePageContainer() {
         <MiniPlayer onPlay={(videoId) => openVideoInNewTab(videoId)} />
     </div>
   );
+}
+
+
+export default function HomePageContainer() {
+  // Wrap with Suspense for useSearchParams
+  return (
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </React.Suspense>
+  )
 }
