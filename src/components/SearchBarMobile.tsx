@@ -22,7 +22,7 @@ export default function SearchBarMobile() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex items-start p-3 gap-2">
+    <div className="fixed inset-0 z-50 bg-background flex items-start p-3 gap-2 animate-fadeIn">
       <Search className="mt-2 h-5 w-5 text-muted-foreground" />
       <input
         ref={inputRef}
