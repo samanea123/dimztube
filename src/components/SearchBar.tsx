@@ -99,6 +99,14 @@ export default function SearchBar({
   }, [q, category]);
 
   useEffect(() => {
+    // Tiap ganti kategori, hapus hasil lama dan query di layar
+    setResults([]);
+    setQ("");
+    setError(null);
+  }, [category]);
+
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsFocused(false);
