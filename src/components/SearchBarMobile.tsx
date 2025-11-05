@@ -16,11 +16,9 @@ export default function SearchBarMobile({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<VideoItem[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -28,59 +26,56 @@ export default function SearchBarMobile({
     }
   }, [open]);
 
-  const handleSearch = async (q: string) => {
-    if (!q.trim()) {
-      setResults([]);
-      setError(null);
+  // === AUTO-SUGGEST ===
+  const fetchSuggestions = async (text: string) => {
+    if (!text.trim()) {
+      setSuggestions([]);
       return;
     }
-
     setLoading(true);
-    setError(null);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`);
+      // NOTE: This endpoint doesn't exist yet as per the prompt.
+      // The user will likely ask to create it in the next step.
+      // For now, let's use the main search endpoint to show something.
+      const res = await fetch(`/api/search?q=${encodeURIComponent(text)}&category=${encodeURIComponent(category)}`);
       const data = await res.json();
-      if (res.ok) {
-        setResults(data.items || []);
-      } else {
-        setError(data.error || "Gagal mencari video");
-      }
+      // We'll map video titles to suggestions for this demo
+      const videoTitles = (data.items || []).map((item: any) => item.title);
+      setSuggestions(videoTitles.slice(0, 5)); 
     } catch (err) {
-      setError("Gagal terhubung ke server.");
-      console.error("Gagal mencari video:", err);
+      console.error(err);
+      setSuggestions([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if(query) {
-        debounceRef.current = window.setTimeout(() => {
-            handleSearch(query);
-        }, 500);
-    } else {
-        setResults([]);
-        setError(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleChange = (val: string) => {
+    setQuery(val);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
-    return () => {
-        if(debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query, category]);
+    timerRef.current = setTimeout(() => fetchSuggestions(val), 400);
+  };
   
-  useEffect(() => {
-    // Reset query and results when category changes
-    setQuery("");
-    setResults([]);
-    setError(null);
-  }, [category]);
-
-
-  const handleSelect = (video: VideoItem) => {
-    setOpen(false);
-    setQuery("");
-    setResults([]);
-    onSelect?.(video);
+  const handleSelectSuggestion = (suggestion: string) => {
+      // For now, let's just perform a search with the suggestion
+      // and select the first result.
+      setQuery(suggestion);
+      setSuggestions([]);
+      
+      // A more direct search could be better.
+      fetch(`/api/search?q=${encodeURIComponent(suggestion)}&category=${encodeURIComponent(category)}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.items && data.items.length > 0 && onSelect) {
+                onSelect(data.items[0]);
+                setOpen(false);
+                setQuery("");
+            }
+        });
   }
 
   return (
@@ -99,17 +94,15 @@ export default function SearchBarMobile({
       {/* Overlay pencarian fullscreen */}
       {open && (
         <div className="fixed inset-0 z-50 bg-background animate-fadeIn flex flex-col">
-          <div className="flex items-start p-3 gap-2 border-b">
-             <form onSubmit={(e) => { e.preventDefault(); handleSearch(query); }} className="flex-1 flex items-center gap-2">
-                <Search className="mt-0 h-5 w-5 text-muted-foreground" />
-                <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={`Cari di DimzTube...`}
-                    className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
-                />
-             </form>
+          <div className="flex items-center p-3 gap-2 border-b">
+            <Search className="h-5 w-5 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="Cari di DimzTube..."
+              className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
+            />
             <Button
               onClick={() => setOpen(false)}
               variant="ghost"
@@ -124,31 +117,23 @@ export default function SearchBarMobile({
             {loading && (
               <div className="p-4 flex items-center justify-center text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span>Memuat...</span>
+                <span>Memuat saran...</span>
               </div>
             )}
-            {error && <div className="p-4 text-destructive text-center">{error}</div>}
-            {!loading && !error && results.length > 0 && (
-              <ul>
-                {results.map((r) => (
-                  <li key={r.id} onClick={() => handleSelect(r)}
-                      className="p-2 flex items-center gap-3 hover:bg-muted cursor-pointer">
-                    <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0">
-                      <Image src={r.thumbnail} alt={r.title} fill className="object-cover" />
+             {suggestions.length > 0 && (
+                <div className="py-2">
+                  {suggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className="px-4 py-3 hover:bg-muted cursor-pointer flex items-center"
+                      onClick={() => handleSelectSuggestion(s)}
+                    >
+                      <Search size={16} className="mr-4 text-muted-foreground" />
+                      <span className="font-medium">{s}</span>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="text-sm font-semibold truncate">{r.title}</div>
-                      <div className="text-xs text-muted-foreground truncate">{r.channel}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {!loading && !error && results.length === 0 && query.length > 2 && (
-              <div className="p-4 text-center text-muted-foreground">
-                Tidak ada hasil untuk &quot;{query}&quot;
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
           </div>
         </div>
       )}
