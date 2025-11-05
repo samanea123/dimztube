@@ -1,7 +1,7 @@
 // src/app/api/search/route.ts
 import { NextResponse } from "next/server";
 
-const KEYS = [
+const API_KEYS = [
   process.env.YOUTUBE_API_KEY_1,
   process.env.YOUTUBE_API_KEY_2,
   process.env.YOUTUBE_API_KEY_3,
@@ -9,7 +9,26 @@ const KEYS = [
   process.env.YOUTUBE_API_KEY_5,
 ].filter(Boolean);
 
-async function tryKey(key: string, q: string, cat?: string) {
+async function fetchYouTube(q: string, key: string) {
+  const url = new URL("https://www.googleapis.com/youtube/v3/search");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("type", "video");
+  url.searchParams.set("maxResults", "24");
+  url.searchParams.set("q", q);
+  url.searchParams.set("key", key as string);
+
+  const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+  const data = await res.json();
+  return { status: res.status, data };
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const query = (searchParams.get("q") || "").trim();
+  const cat = searchParams.get("category") || ""; // Match the client-side param
+
+  if (!query) return NextResponse.json({ items: [] });
+  
   // Topic ID mapping for more accurate category search
   const topicIds: { [key: string]: string } = {
     'musik': '/m/04rlf',
@@ -28,46 +47,44 @@ async function tryKey(key: string, q: string, cat?: string) {
   url.searchParams.set("part", "snippet");
   url.searchParams.set("type", "video");
   url.searchParams.set("maxResults", "12");
-  url.searchParams.set("q", q); // The main query
-  url.searchParams.set("key", key);
+  url.searchParams.set("q", query);
 
   if (cat && topicIds[cat.toLowerCase()]) {
       url.searchParams.set("topicId", topicIds[cat.toLowerCase()]);
   }
 
-  const res = await fetch(url.toString(), { method: "GET" });
-  const data = await res.json();
-  return { status: res.status, data };
-}
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") || "").trim();
-  const cat = searchParams.get("category") || ""; // Use 'category' to match client
-  if (!q) return NextResponse.json({ error: "query empty" }, { status: 400 });
-
-  let lastErr = null;
-  for (const k of KEYS) {
+  for (const key of API_KEYS) {
+    if (!key) continue;
+    
+    url.searchParams.set("key", key);
+    
     try {
-      const { status, data } = await tryKey(k as string, q, cat);
-      if (status === 200 && data && Array.isArray(data.items)) {
-        const items = data.items.map((it: any) => ({
-          id: it.id?.videoId || (it.id && it.id.videoId) || null,
-          title: it.snippet?.title,
-          channel: it.snippet?.channelTitle,
-          thumbnail: it.snippet?.thumbnails?.medium?.url || it.snippet?.thumbnails?.default?.url,
+      const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+      const data = await res.json();
+
+      if (res.status === 200 && data?.items) {
+        const results = data.items.map((item: any) => ({
+          id: item.id?.videoId,
+          title: item.snippet?.title,
+          channel: item.snippet?.channelTitle,
+          thumbnail: item.snippet?.thumbnails?.medium?.url,
         }));
-        return NextResponse.json({ items });
-      } else {
-        lastErr = data || { status };
-        // If quotaExceeded, try next key
+        return NextResponse.json({ items: results });
+      }
+
+      if (data?.error?.errors?.[0]?.reason === "quotaExceeded") {
+        console.warn(`API Key starting with ${key.substring(0,4)}... has exceeded its quota.`);
         continue;
       }
-    } catch (e) {
-      lastErr = e;
+    } catch (err) {
+      console.error("API key failed:", err);
       continue;
     }
   }
 
-  return NextResponse.json({ error: "All API keys failed", detail: lastErr }, { status: 502 });
+  return NextResponse.json(
+    { error: "Semua API key quota-nya habis 😅. Coba lagi nanti ya!" },
+    { status: 429 }
+  );
 }
