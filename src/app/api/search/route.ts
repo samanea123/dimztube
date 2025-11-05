@@ -47,10 +47,18 @@ export async function GET(req: Request) {
   url.searchParams.set("part", "snippet");
   url.searchParams.set("type", "video");
   url.searchParams.set("maxResults", "12");
-  url.searchParams.set("q", query);
+  
+  let searchQuery = query;
+  const lowerCat = cat.toLowerCase();
 
-  if (cat && topicIds[cat.toLowerCase()]) {
-      url.searchParams.set("topicId", topicIds[cat.toLowerCase()]);
+  if (lowerCat === 'lagu karaoke') {
+      searchQuery = `${query} karaoke`;
+  }
+
+  url.searchParams.set("q", searchQuery);
+
+  if (cat && topicIds[lowerCat]) {
+      url.searchParams.set("topicId", topicIds[lowerCat]);
   }
 
 
