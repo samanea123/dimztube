@@ -1,20 +1,23 @@
 "use client";
-import React from "react";
+
+import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { Search, RefreshCcw, Cast, Bell } from "lucide-react";
 import Link from "next/link";
-import { Cast, RotateCw, Mic, Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Logo from "@/components/logo";
+import Logo from "./logo";
+import MirrorButton from "./MirrorButton";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import MirrorButton from "./MirrorButton";
-import type { VideoItem } from "./SearchBar";
+import type { VideoItem as SearchVideoItem } from "./SearchBar";
 import SearchBar from "./SearchBar";
+import { Button } from "./ui/button";
+
 
 interface NavbarProps {
   onReload: () => void;
   onCast: () => void;
   category?: string;
-  onSelectVideo?: (video: VideoItem) => void;
+  onSelectVideo?: (video: SearchVideoItem) => void;
 }
 
 export default function Navbar({ onReload, onCast, category, onSelectVideo }: NavbarProps) {
@@ -42,7 +45,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
           aria-label="Reload page"
           title="Perbarui Video"
         >
-          <RotateCw className="h-5 w-5" />
+          <RefreshCcw className="h-5 w-5" />
         </Button>
 
         <Button
