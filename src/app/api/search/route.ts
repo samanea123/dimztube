@@ -1,3 +1,4 @@
+
 // src/app/api/search/route.ts
 import { NextResponse } from "next/server";
 
@@ -13,8 +14,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const query = (searchParams.get("q") || "").trim();
   const cat = searchParams.get("category") || ""; // Match the client-side param
+  const pageToken = searchParams.get("pageToken") || "";
 
-  if (!query) return NextResponse.json({ items: [] });
+  if (!query) return NextResponse.json({ items: [], nextPageToken: null });
   
   let searchQuery = query;
   const lowerCat = cat.toLowerCase();
@@ -36,6 +38,10 @@ export async function GET(req: Request) {
   url.searchParams.set("maxResults", "24");
   url.searchParams.set("q", searchQuery);
 
+  if (pageToken) {
+    url.searchParams.set("pageToken", pageToken);
+  }
+
   for (const key of API_KEYS) {
     if (!key) continue;
     
@@ -52,7 +58,7 @@ export async function GET(req: Request) {
           channel: item.snippet?.channelTitle,
           thumbnail: item.snippet?.thumbnails?.medium?.url,
         }));
-        return NextResponse.json({ items: results });
+        return NextResponse.json({ items: results, nextPageToken: data.nextPageToken });
       }
 
       if (data?.error?.errors?.[0]?.reason === "quotaExceeded") {

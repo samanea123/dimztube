@@ -31,7 +31,9 @@ function HomePageContent() {
   
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const { toast } = useToast();
   
   const updateKeyUsage = (apiKeyIndex: number, cost: number, totalKeys: number) => {
@@ -55,15 +57,21 @@ function HomePageContent() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const fetchAndSetVideos = async (category: string, searchQuery: string | null, forceRefresh = false) => {
-    setLoading(true);
+  const fetchAndSetVideos = async (category: string, searchQuery: string | null, forceRefresh = false, pageToken: string | null = null) => {
+    if (pageToken) {
+        setLoadingMore(true);
+    } else {
+        setLoading(true);
+    }
     const cacheKey = searchQuery ? `search_${searchQuery}_${category}` : `videos_${category}`;
     
-    if (!forceRefresh) {
+    if (!forceRefresh && !pageToken) {
       try {
         const cachedData = sessionStorage.getItem(cacheKey);
         if (cachedData) {
-          setVideos(JSON.parse(cachedData));
+          const { cachedVideos, cachedToken } = JSON.parse(cachedData);
+          setVideos(cachedVideos);
+          setNextPageToken(cachedToken);
           setLoading(false);
           return;
         }
@@ -74,12 +82,17 @@ function HomePageContent() {
 
     try {
       let data: VideoItem[] = [];
+      let newNextPageToken: string | null = null;
       let apiKeyIndex = -1;
       let cost = 0;
       let totalApiKeys = 0;
 
       if (searchQuery) {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`);
+        let url = `/api/search?q=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`;
+        if (pageToken) {
+            url += `&pageToken=${pageToken}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) {
             throw new Error(`API search request failed with status ${res.status}`);
         }
@@ -88,6 +101,7 @@ function HomePageContent() {
         if (searchData.error) {
             toast({ variant: "destructive", title: "Error Pencarian", description: searchData.error || "Gagal memuat hasil." });
             data = [];
+            newNextPageToken = null;
         } else {
            data = (searchData.items || []).map((item: any) => ({
              id: item.id,
@@ -98,9 +112,11 @@ function HomePageContent() {
              publishedAt: '',
              duration: ''
           }));
+          newNextPageToken = searchData.nextPageToken || null;
         }
       } else {
         let response: VideoApiResponse | null = null;
+        // Load more for categories is not implemented, but can be added here
         if (category === 'Semua') {
           response = await getPopularVideos();
         } else {
@@ -112,26 +128,33 @@ function HomePageContent() {
           apiKeyIndex = response.apiKeyIndex;
           cost = response.cost;
           totalApiKeys = response.totalApiKeys;
+          // Note: getPopularVideos/getVideosByCategory don't support pagination in this example
+          newNextPageToken = null;
         }
       }
       
-      setVideos(data);
-      if (data.length > 0) {
+      const newVideos = pageToken ? [...videos, ...data] : data;
+      setVideos(newVideos);
+      setNextPageToken(newNextPageToken);
+
+      if (newVideos.length > 0 && !pageToken) { // Only cache the first page
         try {
-          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          const cachePayload = { cachedVideos: newVideos, cachedToken: newNextPageToken };
+          sessionStorage.setItem(cacheKey, JSON.stringify(cachePayload));
         } catch (e) {
             console.warn("Failed to write to sessionStorage", e);
         }
-        if (apiKeyIndex !== -1) {
-          updateKeyUsage(apiKeyIndex, cost, totalApiKeys);
-        }
+      }
+      if (apiKeyIndex !== -1) {
+        updateKeyUsage(apiKeyIndex, cost, totalApiKeys);
       }
     } catch(err) {
       console.error("Gagal mengambil data video:", err);
       toast({ variant: "destructive", title: "Gagal Memuat Video", description: "Terjadi masalah saat mengambil data. Coba muat ulang halaman." });
-      setVideos([]);
+      if (!pageToken) setVideos([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
   
@@ -160,6 +183,12 @@ function HomePageContent() {
     window.history.pushState({}, '', '/');
     setSelectedCategory(category);
   };
+
+  const handleLoadMore = () => {
+      if (q && nextPageToken) {
+          fetchAndSetVideos(selectedCategory, q, false, nextPageToken);
+      }
+  }
 
   const initializeCastApi = () => {
     try {
@@ -250,6 +279,9 @@ function HomePageContent() {
                 loading={loading} 
                 onPlayVideo={handlePlayVideo} 
                 onAddToQueue={handleAddToQueue}
+                onLoadMore={handleLoadMore}
+                canLoadMore={!!nextPageToken}
+                loadingMore={loadingMore}
             />
         </main>
         <QueueSidebar onPlay={(videoId) => openVideoInNewTab(videoId)} />

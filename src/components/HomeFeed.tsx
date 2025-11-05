@@ -3,6 +3,8 @@
 import VideoCard from '@/components/video-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { VideoItem } from '@/lib/youtube';
+import { Button } from './ui/button';
+import { Loader2 } from 'lucide-react';
 
 function VideoGridSkeleton() {
   return (
@@ -28,23 +30,42 @@ interface HomeFeedProps {
   loading: boolean;
   onPlayVideo: (video: VideoItem) => void;
   onAddToQueue: (video: VideoItem) => void;
+  onLoadMore?: () => void;
+  canLoadMore?: boolean;
+  loadingMore?: boolean;
 }
 
-export default function HomeFeed({ videos, loading, onPlayVideo, onAddToQueue }: HomeFeedProps) {
+export default function HomeFeed({ videos, loading, onPlayVideo, onAddToQueue, onLoadMore, canLoadMore, loadingMore }: HomeFeedProps) {
   if (loading) {
     return <VideoGridSkeleton />;
   }
 
   return (
-    <div className="grid grid-cols-1 gap-x-4 gap-y-8 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {videos.map((video) => (
-        <VideoCard 
-          key={video.id} 
-          video={video} 
-          onPlay={() => onPlayVideo(video)} 
-          onAddToQueue={() => onAddToQueue(video)}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-8 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {videos.map((video) => (
+          <VideoCard 
+            key={video.id} 
+            video={video} 
+            onPlay={() => onPlayVideo(video)} 
+            onAddToQueue={() => onAddToQueue(video)}
+          />
+        ))}
+      </div>
+      {canLoadMore && (
+          <div className="flex justify-center my-8">
+              <Button onClick={onLoadMore} disabled={loadingMore}>
+                  {loadingMore ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Memuat...
+                      </>
+                  ) : (
+                    "Muat Lebih Banyak"
+                  )}
+              </Button>
+          </div>
+      )}
+    </>
   );
 }
