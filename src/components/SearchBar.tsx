@@ -163,6 +163,7 @@ export default function SearchBar({
                 <Search className="h-full w-full" />
              </button>
              <input
+                type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onFocus={() => setIsFocused(true)}
@@ -183,6 +184,7 @@ export default function SearchBar({
                     </button>
                     <input
                         ref={inputRef}
+                        type="search"
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Cari di DimzTube..."
