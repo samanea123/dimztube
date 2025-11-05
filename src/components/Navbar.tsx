@@ -29,8 +29,8 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
         </Link>
       </div>
 
-      <div className="flex-1 flex justify-center px-4">
-        <div className="w-full max-w-2xl flex items-center">
+      <div className="flex-1 flex justify-center px-2 sm:px-4">
+        <div className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl flex items-center">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
             <SearchBar category={category} onSelect={onSelectVideo} />
