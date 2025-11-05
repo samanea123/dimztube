@@ -1,7 +1,5 @@
 'use server';
 
-import { google } from 'googleapis';
-
 // 1. Get all API keys from environment variables
 const apiKeys = [
   process.env.YOUTUBE_API_KEY_1,
@@ -13,16 +11,10 @@ const apiKeys = [
 
 let currentApiKeyIndex = 0;
 
-// 2. Function to get the current youtube service instance
-const getYoutubeService = () => {
-    if (apiKeys.length === 0) {
-        return null;
-    }
-    const apiKey = apiKeys[currentApiKeyIndex];
-    return google.youtube({
-        version: 'v3',
-        auth: apiKey,
-    });
+// 2. Function to get the current API key
+const getApiKey = () => {
+    if (apiKeys.length === 0) return null;
+    return apiKeys[currentApiKeyIndex];
 }
 
 // 3. Function to switch to the next API key
@@ -36,7 +28,7 @@ export interface VideoItem {
   title: string;
   thumbnailUrl: string;
   channelTitle: string;
-  channelId: string;
+  channelId?: string; // Made optional as search endpoint doesn't provide it
   viewCount: string;
   publishedAt: string;
   duration: string; 
@@ -93,43 +85,55 @@ const formatPublishedAt = (publishedAt: string): string => {
     return `${Math.floor(diffDays / 365)} years ago`;
 };
 
-// 4. Wrap API calls to handle retries with different keys
-async function callYoutubeApi(apiCall: (youtube: any) => Promise<any>, cost: number): Promise<{ response: any; usedApiKeyIndex: number, cost: number } | null> {
+
+async function fetchFromYouTube(endpoint: string, params: Record<string, string>, cost: number): Promise<{ response: any; usedApiKeyIndex: number, cost: number } | null> {
     if (apiKeys.length === 0) {
-        console.warn('YouTube API keys are not configured. Please set YOUTUBE_API_KEY_1, etc. environment variables. Returning empty video list.');
+        console.warn('YouTube API keys are not configured. Returning empty video list.');
         return null;
     }
-    
+
     const initialKeyIndex = currentApiKeyIndex;
+    const baseUrl = `https://www.googleapis.com/youtube/v3/${endpoint}`;
 
     for (let i = 0; i < apiKeys.length; i++) {
-        const youtube = getYoutubeService();
-        if (!youtube) return null;
+        const apiKey = getApiKey();
+        if (!apiKey) return null;
 
         const keyIndexToReport = currentApiKeyIndex;
+        const url = new URL(baseUrl);
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+        url.searchParams.set('key', apiKey);
 
         try {
-            const response = await apiCall(youtube);
-            return { response, usedApiKeyIndex: keyIndexToReport, cost };
-        } catch (error: any) {
-            // Check for quota exceeded or invalid key errors
-            if (error.code === 403 || error.code === 400) {
-                console.warn(`API key at index ${currentApiKeyIndex} failed. Reason: ${error.message}. Trying next key.`);
+            const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+            const data = await res.json();
+            
+            if (res.status === 200 && data.items) {
+                 return { response: data, usedApiKeyIndex: keyIndexToReport, cost };
+            }
+
+            if (data?.error?.errors?.[0]?.reason === "quotaExceeded") {
+                console.warn(`API key at index ${currentApiKeyIndex} failed due to quota. Trying next key.`);
                 switchToNextApiKey();
-                
-                // If we've tried all keys and are back to the start, stop.
                 if (currentApiKeyIndex === initialKeyIndex) {
-                    console.error('All YouTube API keys have failed. Stopping retries.');
+                    console.error('All YouTube API keys have exceeded their quota.');
                     break;
                 }
             } else {
-                console.error('An unexpected error occurred with YouTube API:', error);
-                // Don't retry on other errors
-                return null;
+                 console.error(`An unexpected error occurred with YouTube API: ${data?.error?.message || 'Unknown error'}`);
+                 // Don't retry on other errors
+                 return null;
+            }
+        } catch (error: any) {
+            console.error('An unexpected error occurred while fetching from YouTube:', error);
+            switchToNextApiKey();
+            if (currentApiKeyIndex === initialKeyIndex) {
+              console.error('All YouTube API keys have failed after network errors.');
+              break;
             }
         }
     }
-    
+
     console.error('All YouTube API keys have failed.');
     return null;
 }
@@ -150,36 +154,34 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
       return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost };
     }
     
-    // Video details cost 1 unit per call.
-    const videoDetailsResult = await callYoutubeApi(youtube => youtube.videos.list({
-        part: ['snippet', 'contentDetails', 'statistics'],
-        id: videoIds,
-    }), 1);
+    const videoDetailsResult = await fetchFromYouTube('videos', {
+        part: 'snippet,contentDetails,statistics',
+        id: videoIds.join(','),
+    }, 1);
 
-    if (!videoDetailsResult || !videoDetailsResult.response || !videoDetailsResult.response.data.items) {
+
+    if (!videoDetailsResult || !videoDetailsResult.response || !videoDetailsResult.response.items) {
       return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost };
     }
 
-    const channelIds = videoDetailsResult.response.data.items.map((item: any) => item.snippet?.channelId).filter((id: string | undefined): id is string => !!id);
-    
+    const channelIds = videoDetailsResult.response.items.map((item: any) => item.snippet?.channelId).filter(Boolean);
     const channelAvatars = new Map<string, string>();
     let channelCost = 0;
     if (channelIds.length > 0) {
-        // Channel details cost 1 unit per call.
         channelCost = 1;
-        const channelsResult = await callYoutubeApi(youtube => youtube.channels.list({
-          part: ['snippet'],
-          id: [...new Set(channelIds)], // Use Set to avoid duplicate IDs
-        }), 1);
+        const channelsResult = await fetchFromYouTube('channels', {
+          part: 'snippet',
+          id: [...new Set(channelIds)].join(','),
+        }, 1);
 
-        channelsResult?.response?.data.items?.forEach((channel: any) => {
+        channelsResult?.response?.items?.forEach((channel: any) => {
             if (channel.id && channel.snippet?.thumbnails?.default?.url) {
                 channelAvatars.set(channel.id, channel.snippet.thumbnails.default.url);
             }
         });
     }
 
-    for (const item of videoDetailsResult.response.data.items) {
+    for (const item of videoDetailsResult.response.items) {
         if (item.id && item.snippet && item.contentDetails && item.statistics) {
             videoItems.push({
                 id: item.id,
@@ -194,29 +196,29 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
             });
         }
     }
-    return { videos: videoItems, apiKeyIndex: usedApiKeyIndex, totalApiKeys: apiKeys.length, cost: cost + videoDetailsResult.cost + channelCost };
+    const totalCost = cost + (videoDetailsResult.cost || 0) + channelCost;
+    return { videos: videoItems, apiKeyIndex: videoDetailsResult.usedApiKeyIndex, totalApiKeys: apiKeys.length, cost: totalCost };
 }
 
+
 export async function getPopularVideos(): Promise<VideoApiResponse> {
-  // videos.list costs 1 unit.
-  const apiResult = await callYoutubeApi(youtube => youtube.videos.list({
-    part: ['id'],
+  const apiResult = await fetchFromYouTube('videos', {
+    part: 'id',
     chart: 'mostPopular',
     regionCode: 'ID',
-    maxResults: 20,
-  }), 1);
+    maxResults: '20',
+  }, 1);
   return processVideoResponse(apiResult);
 }
 
 export async function getVideosByCategory(category: string): Promise<VideoApiResponse> {
-    // search.list costs 100 units.
-    const apiResult = await callYoutubeApi(youtube => youtube.search.list({
-        part: ['id'],
+    const apiResult = await fetchFromYouTube('search', {
+        part: 'id',
         q: category,
         type: 'video',
-        videoCategoryId: category === 'Musik' ? '10' : undefined,
-        maxResults: 20,
+        maxResults: '20',
         regionCode: 'ID'
-    }), 100);
+    }, 100);
     return processVideoResponse(apiResult);
 }
+    
