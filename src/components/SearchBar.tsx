@@ -136,7 +136,11 @@ export default function SearchBar({
   const showResults = isFocused && (q.length > 0 || loading || error);
 
   const handleSelect = (video: VideoItem) => {
-    onSelect?.(video);
+    if (onSelect) {
+        onSelect(video);
+    } else {
+        router.push(`/?q=${encodeURIComponent(video.title)}`);
+    }
     setIsFocused(false);
     setIsMobileOpen(false);
     setQ('');
