@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Search, RefreshCcw, Cast, Bell } from "lucide-react";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import type { VideoItem as SearchVideoItem } from "./SearchBar";
 import SearchBar from "./SearchBar";
 import { Button } from "./ui/button";
 
+const CUSTOM_AVATAR_KEY = 'dimztubeCustomAvatar';
 
 interface NavbarProps {
   onReload: () => void;
@@ -21,7 +22,26 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onReload, onCast, category, onSelectVideo }: NavbarProps) {
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar1');
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const defaultAvatar = PlaceHolderImages.find(img => img.id === 'avatar1')?.imageUrl;
+
+  useEffect(() => {
+    // Function to update avatar from localStorage
+    const updateAvatar = () => {
+      const customAvatar = localStorage.getItem(CUSTOM_AVATAR_KEY);
+      setAvatarUrl(customAvatar || defaultAvatar);
+    };
+
+    updateAvatar(); // Initial load
+
+    // Listen for changes from other tabs (e.g., from the admin page)
+    window.addEventListener('storage', updateAvatar);
+
+    return () => {
+      window.removeEventListener('storage', updateAvatar);
+    };
+  }, [defaultAvatar]);
+
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
@@ -67,7 +87,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
 
         <Link href="/admin/monitor" title="Halaman Admin">
           <Avatar className="h-8 w-8">
-            {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="User" />}
+            <AvatarImage src={avatarUrl} alt="User" />
             <AvatarFallback>U</AvatarFallback>
           </Avatar>
         </Link>
