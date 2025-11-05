@@ -9,19 +9,6 @@ const API_KEYS = [
   process.env.YOUTUBE_API_KEY_5,
 ].filter(Boolean);
 
-async function fetchYouTube(q: string, key: string) {
-  const url = new URL("https://www.googleapis.com/youtube/v3/search");
-  url.searchParams.set("part", "snippet");
-  url.searchParams.set("type", "video");
-  url.searchParams.set("maxResults", "24");
-  url.searchParams.set("q", q);
-  url.searchParams.set("key", key as string);
-
-  const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
-  const data = await res.json();
-  return { status: res.status, data };
-}
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const query = (searchParams.get("q") || "").trim();
@@ -29,38 +16,25 @@ export async function GET(req: Request) {
 
   if (!query) return NextResponse.json({ items: [] });
   
-  // Topic ID mapping for more accurate category search
-  const topicIds: { [key: string]: string } = {
-    'musik': '/m/04rlf',
-    'music': '/m/04rlf',
-    'game': '/m/0bzvm2',
-    'gaming': '/m/0bzvm2',
-    'film': '/m/02vxn',
-    'movies': '/m/02vxn',
-    'berita': '/m/09s1f',
-    'news': '/m/09s1f',
-    'olahraga': '/m/06ntj',
-    'sports': '/m/06ntj',
-  };
+  let searchQuery = query;
+  const lowerCat = cat.toLowerCase();
+
+  // Custom search query based on category
+  if (lowerCat === 'lagu karaoke') {
+    searchQuery = `${query} karaoke`;
+  } else if (lowerCat === 'musik') {
+    searchQuery = `${query} music`;
+  } else if (lowerCat === 'film') {
+    searchQuery = `${query} movie trailer`;
+  } else if (lowerCat === 'game') {
+      searchQuery = `${query} gameplay`;
+  }
 
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
   url.searchParams.set("type", "video");
-  url.searchParams.set("maxResults", "12");
-  
-  let searchQuery = query;
-  const lowerCat = cat.toLowerCase();
-
-  if (lowerCat === 'lagu karaoke') {
-      searchQuery = `${query} karaoke`;
-  }
-
+  url.searchParams.set("maxResults", "24");
   url.searchParams.set("q", searchQuery);
-
-  if (cat && topicIds[lowerCat]) {
-      url.searchParams.set("topicId", topicIds[lowerCat]);
-  }
-
 
   for (const key of API_KEYS) {
     if (!key) continue;
