@@ -90,14 +90,16 @@ export default function SearchBarMobile({
       {open && (
         <div className="fixed inset-0 z-50 bg-background animate-fadeIn flex flex-col">
           <div className="flex items-start p-3 gap-2 border-b">
-            <Search className="mt-2 h-5 w-5 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari di DimzTube..."
-              className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
-            />
+             <form onSubmit={(e) => { e.preventDefault(); handleSearch(query); }} className="flex-1 flex items-center gap-2">
+                <Search className="mt-0 h-5 w-5 text-muted-foreground" />
+                <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Cari di DimzTube..."
+                    className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
+                />
+             </form>
             <Button
               onClick={() => setOpen(false)}
               variant="ghost"
