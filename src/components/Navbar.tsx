@@ -1,3 +1,4 @@
+
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -7,13 +8,16 @@ import Logo from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import MirrorButton from "./MirrorButton";
+import SearchBar, { type VideoItem } from "./SearchBar";
 
 interface NavbarProps {
   onReload: () => void;
   onCast: () => void;
+  category?: string;
+  onSelectVideo?: (video: VideoItem) => void;
 }
 
-export default function Navbar({ onReload, onCast }: NavbarProps) {
+export default function Navbar({ onReload, onCast, category, onSelectVideo }: NavbarProps) {
   const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar1');
 
   return (
@@ -28,12 +32,8 @@ export default function Navbar({ onReload, onCast }: NavbarProps) {
       <div className="flex-1 flex justify-center px-4">
         <div className="w-full max-w-2xl flex items-center">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search"
-              className="w-full h-10 pl-10 pr-4 rounded-full border bg-background focus:bg-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+            <SearchBar category={category} onSelect={onSelectVideo} />
           </div>
           <Button variant="ghost" size="icon" className="ml-2 flex-shrink-0">
             <Mic className="h-5 w-5" />

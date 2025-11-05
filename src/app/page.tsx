@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,6 +10,7 @@ import { addToQueue, getQueue, setQueue, setCurrentIndex, getSettings } from '@/
 import { useToast } from '@/hooks/use-toast';
 import QueueSidebar from '@/components/QueueSidebar';
 import MiniPlayer from '@/components/MiniPlayer';
+import type { VideoItem as SearchVideoItem } from '@/components/SearchBar';
 
 const KEY_USAGE_STORAGE_KEY = 'yt_keys_usage';
 
@@ -131,14 +133,15 @@ export default function HomePageContainer() {
          setQueue([videoToPlay]);
          setCurrentIndex(0);
       } else {
-        // Fallback for video not in the main list (e.g. from queue page)
+        // Fallback for video not in the main list (e.g. from queue page or search)
         const videoFromQueue = getQueue().find(v => v.id === startVideoId);
         if (videoFromQueue) {
             setQueue([videoFromQueue]);
             setCurrentIndex(0);
         } else {
-            toast({ variant: 'destructive', title: 'Video tidak ditemukan.'});
-            return;
+            // If it's not anywhere, just create a new queue with a basic object
+            setQueue([{ id: startVideoId, title: 'Video', thumbnailUrl: '', channelTitle: '' }]);
+            setCurrentIndex(0);
         }
       }
     } else {
@@ -162,13 +165,33 @@ export default function HomePageContainer() {
         description: `"${video.title}" telah ditambahkan.`,
     });
   };
+  
+  const handleSelectVideoFromSearch = (video: SearchVideoItem) => {
+    const videoToPlay: VideoItem = {
+        id: video.id,
+        title: video.title,
+        channelTitle: video.channel,
+        thumbnailUrl: video.thumbnail,
+        viewCount: '',
+        publishedAt: '',
+        duration: '',
+    }
+    setQueue([videoToPlay]);
+    setCurrentIndex(0);
+    openVideoInNewTab(video.id);
+  }
 
   return (
     <div className="flex flex-col h-full">
-        <Navbar onReload={handleReload} onCast={() => {
+        <Navbar 
+          onReload={handleReload} 
+          onCast={() => {
             const context = cast.framework.CastContext.getInstance();
             context.requestSession().catch((err: any) => console.error(err));
-        }} />
+          }}
+          category={selectedCategory}
+          onSelectVideo={handleSelectVideoFromSearch}
+        />
         <div className="sticky top-14 z-10 bg-background/95 backdrop-blur">
              <CategoryBar
                 categories={categories}
