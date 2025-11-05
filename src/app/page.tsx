@@ -93,15 +93,15 @@ function HomePageContent() {
             url += `&pageToken=${pageToken}`;
         }
         const res = await fetch(url);
-        if (!res.ok) {
-            throw new Error(`API search request failed with status ${res.status}`);
-        }
+        
         const searchData = await res.json();
         
-        if (searchData.error) {
+        if (!res.ok || searchData.error) {
             toast({ variant: "destructive", title: "Error Pencarian", description: searchData.error || "Gagal memuat hasil." });
-            data = [];
-            newNextPageToken = null;
+            setVideos(pageToken ? videos : []); // Keep existing videos on load more error, else clear
+            setLoading(false);
+            setLoadingMore(false);
+            return;
         } else {
            data = (searchData.items || []).map((item: any) => ({
              id: item.id,
@@ -151,7 +151,7 @@ function HomePageContent() {
     } catch(err) {
       console.error("Gagal mengambil data video:", err);
       toast({ variant: "destructive", title: "Gagal Memuat Video", description: "Terjadi masalah saat mengambil data. Coba muat ulang halaman." });
-      if (!pageToken) setVideos([]);
+      setVideos(pageToken ? videos : []); // Keep existing videos on error, else clear
     } finally {
       setLoading(false);
       setLoadingMore(false);
