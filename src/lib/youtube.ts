@@ -42,6 +42,7 @@ export interface VideoApiResponse {
     apiKeyIndex: number;
     totalApiKeys: number;
     cost: number;
+    nextPageToken?: string | null;
 }
 
 
@@ -139,7 +140,7 @@ async function fetchFromYouTube(endpoint: string, params: Record<string, string>
 }
 
 async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex: number, cost: number } | null): Promise<VideoApiResponse> {
-    const emptyResponse = { videos: [], apiKeyIndex: -1, totalApiKeys: apiKeys.length, cost: 0 };
+    const emptyResponse: VideoApiResponse = { videos: [], apiKeyIndex: -1, totalApiKeys: apiKeys.length, cost: 0, nextPageToken: null };
     if (!apiResult || !apiResult.response || !apiResult.response.items) {
         return emptyResponse;
     }
@@ -151,7 +152,7 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
     const videoIds = response.items.map((item: any) => item.id.videoId || item.id).filter(Boolean);
     
     if (videoIds.length === 0) {
-      return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost };
+      return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost, nextPageToken: response.nextPageToken || null };
     }
     
     const videoDetailsResult = await fetchFromYouTube('videos', {
@@ -197,7 +198,13 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
         }
     }
     const totalCost = cost + (videoDetailsResult.cost || 0) + channelCost;
-    return { videos: videoItems, apiKeyIndex: videoDetailsResult.usedApiKeyIndex, totalApiKeys: apiKeys.length, cost: totalCost };
+    return { 
+        videos: videoItems, 
+        apiKeyIndex: videoDetailsResult.usedApiKeyIndex, 
+        totalApiKeys: apiKeys.length, 
+        cost: totalCost,
+        nextPageToken: response.nextPageToken || null
+    };
 }
 
 
@@ -221,4 +228,3 @@ export async function getVideosByCategory(category: string): Promise<VideoApiRes
     }, 100);
     return processVideoResponse(apiResult);
 }
-    
