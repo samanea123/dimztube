@@ -74,32 +74,32 @@
     },
     {
       "id": "avatar1",
-      "description": "User avatar placeholder",
-      "imageUrl": "https://images.unsplash.com/photo-1704726135027-9c6f034cfa41?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx1c2VyJTIwYXZhdGFyfGVufDB8fHx8MTc2MjMxMDQyOXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "description": "User avatar",
+      "imageUrl": "https://storage.googleapis.com/gweb-aip-images/user-upload-image-1720531589394.png",
       "imageHint": "user avatar"
     },
     {
       "id": "avatar2",
       "description": "Abstract logo",
-      "imageUrl": "https://images.unsplash.com/photo-1761223956853-7c7c12ebff18?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzYyMjE1MTQwfDA&ixlib-rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1761223956853-7c7c12ebff18?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzYyMjE1MTQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "abstract logo"
     },
     {
       "id": "avatar3",
       "description": "Gaming mascot",
-      "imageUrl": "https://images.unsplash.com/photo-1699542105807-4ac0805a878f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBtYXNjb3R8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib-rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1699542105807-4ac0805a878f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBtYXNjb3R8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gaming mascot"
     },
     {
       "id": "avatar4",
       "description": "Music note logo",
-      "imageUrl": "https://images.unsplash.com/photo-1591025810539-a321000cda85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtdXNpYyUyMG5vdGV8ZW58MHx8fHwxNzYyMjMwODgxfDA&ixlib-rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1591025810539-a321000cda85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtdXNpYyUyMG5vdGV8ZW58MHx8fHwxNzYyMjMwODgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "music note"
     },
     {
       "id": "avatar5",
       "description": "Film camera icon",
-      "imageUrl": "https://images.unsplash.com/photo-1500705077387-65f31ef00c90?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmaWxtJTIwY2FtZXJhfGVufDB8fHx8MTc2MjE4NjgzN3ww&ixlib-rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1500705077387-65f31ef00c90?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmaWxtJTIwY2FtZXJhfGVufDB8fHx8MTc2MjE4NjgzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "film camera"
     },
     {
