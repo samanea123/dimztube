@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import type { VideoItem } from "./SearchBar";
 
 export default function SearchBarMobile({
+  category = "semua",
   onSelect,
 }: {
+  category?: string;
   onSelect?: (v: VideoItem) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -36,7 +38,7 @@ export default function SearchBarMobile({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`);
       const data = await res.json();
       if (res.ok) {
         setResults(data.items || []);
@@ -64,7 +66,15 @@ export default function SearchBarMobile({
     return () => {
         if(debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, category]);
+  
+  useEffect(() => {
+    // Reset query and results when category changes
+    setQuery("");
+    setResults([]);
+    setError(null);
+  }, [category]);
+
 
   const handleSelect = (video: VideoItem) => {
     setOpen(false);
@@ -96,7 +106,7 @@ export default function SearchBarMobile({
                     ref={inputRef}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Cari di DimzTube..."
+                    placeholder={`Cari di DimzTube...`}
                     className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
                 />
              </form>

@@ -40,7 +40,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
 
       <div className="flex items-center gap-1">
         <div className="sm:hidden">
-            <SearchBarMobile onSelect={onSelectVideo} />
+            <SearchBarMobile category={category} onSelect={onSelectVideo} />
         </div>
         <Button
           variant="ghost"
