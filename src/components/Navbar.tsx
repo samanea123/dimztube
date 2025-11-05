@@ -1,4 +1,3 @@
-
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -41,7 +40,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
 
       <div className="flex items-center gap-1">
         <div className="sm:hidden">
-            <SearchBarMobile />
+            <SearchBarMobile onSelect={onSelectVideo} />
         </div>
         <Button
           variant="ghost"
