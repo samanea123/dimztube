@@ -2,7 +2,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { Cast, RotateCw, Search, Mic, Bell } from "lucide-react";
+import { Cast, RotateCw, Mic, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -29,15 +29,12 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
         </Link>
       </div>
 
-      <div className="flex-1 flex justify-center px-2 sm:px-4">
-        <div className="w-full sm:max-w-md md:max-w-lg lg:max-w-xl flex items-center">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+      <div className="flex-1 flex justify-center px-0 sm:px-4">
+        <div className="w-full max-w-xl flex items-center">
             <SearchBar category={category} onSelect={onSelectVideo} />
-          </div>
-          <Button variant="ghost" size="icon" className="ml-2 flex-shrink-0">
-            <Mic className="h-5 w-5" />
-          </Button>
+            <Button variant="ghost" size="icon" className="ml-2 flex-shrink-0">
+                <Mic className="h-5 w-5" />
+            </Button>
         </div>
       </div>
 
@@ -72,7 +69,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
 
         <Link href="/admin/monitor" title="Halaman Admin">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={userAvatar?.imageUrl} alt="User" />
+            {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="User" />}
             <AvatarFallback>U</AvatarFallback>
           </Avatar>
         </Link>
