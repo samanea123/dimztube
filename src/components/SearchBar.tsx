@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Loader2, Mic, Search, X } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -23,6 +24,7 @@ export default function SearchBar({
   const debounceRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (isMobileOpen && inputRef.current) {
@@ -88,6 +90,16 @@ export default function SearchBar({
       setLoading(false);
     }
   };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      const term = q.trim();
+      if (!term) return;
+
+      setIsFocused(false);
+      setIsMobileOpen(false);
+      router.push(`/search?q=${encodeURIComponent(term)}&category=${encodeURIComponent(category)}`);
+  };
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -146,8 +158,10 @@ export default function SearchBar({
         </div>
         
         {/* Desktop: Always visible search bar */}
-        <div className="relative hidden sm:flex w-full items-center">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+        <form onSubmit={handleSubmit} className="relative hidden sm:flex w-full items-center">
+             <button type="submit" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10 bg-transparent border-none p-0">
+                <Search className="h-full w-full" />
+             </button>
              <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -158,13 +172,15 @@ export default function SearchBar({
              <Button variant="ghost" size="icon" className="ml-2 flex-shrink-0">
                 <Mic className="h-5 w-5" />
              </Button>
-        </div>
+        </form>
 
         {/* Mobile: Fullscreen Overlay */}
         {isMobileOpen && (
             <div className="fixed inset-0 z-50 bg-background animate-fadeIn flex flex-col">
-                <div className="flex items-center p-3 gap-2 border-b">
-                    <Search className="h-5 w-5 text-muted-foreground" />
+                <form onSubmit={handleSubmit} className="flex items-center p-3 gap-2 border-b">
+                    <button type="submit" className="p-0 bg-transparent border-none">
+                        <Search className="h-5 w-5 text-muted-foreground" />
+                    </button>
                     <input
                         ref={inputRef}
                         value={q}
@@ -180,7 +196,7 @@ export default function SearchBar({
                     >
                         <X className="h-5 w-5" />
                     </Button>
-                </div>
+                </form>
                 {/* Mobile Results */}
                  <div className="flex-1 overflow-y-auto">
                     {loading && (
