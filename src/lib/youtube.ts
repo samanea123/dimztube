@@ -140,7 +140,7 @@ async function fetchFromYouTube(endpoint: string, params: Record<string, string>
 
 async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex: number, cost: number } | null): Promise<VideoApiResponse> {
     const emptyResponse = { videos: [], apiKeyIndex: -1, totalApiKeys: apiKeys.length, cost: 0 };
-    if (!apiResult || !apiResult.response || !apiResult.response.data.items) {
+    if (!apiResult || !apiResult.response || !apiResult.response.items) {
         return emptyResponse;
     }
     
@@ -148,7 +148,7 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
 
     const videoItems: VideoItem[] = [];
     
-    const videoIds = response.data.items.map((item: any) => item.id.videoId || item.id).filter(Boolean);
+    const videoIds = response.items.map((item: any) => item.id.videoId || item.id).filter(Boolean);
     
     if (videoIds.length === 0) {
       return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost };
