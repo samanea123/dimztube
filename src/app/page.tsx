@@ -60,11 +60,15 @@ function HomePageContent() {
     const cacheKey = searchQuery ? `search_${searchQuery}_${category}` : `videos_${category}`;
     
     if (!forceRefresh) {
-      const cachedData = sessionStorage.getItem(cacheKey);
-      if (cachedData) {
-        setVideos(JSON.parse(cachedData));
-        setLoading(false);
-        return;
+      try {
+        const cachedData = sessionStorage.getItem(cacheKey);
+        if (cachedData) {
+          setVideos(JSON.parse(cachedData));
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("Failed to read from sessionStorage", e);
       }
     }
 
@@ -76,10 +80,16 @@ function HomePageContent() {
 
       if (searchQuery) {
         const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`);
+        if (!res.ok) {
+            throw new Error(`API search request failed with status ${res.status}`);
+        }
         const searchData = await res.json();
-        if (res.ok && searchData.items) {
-          // The search API returns a simpler format, let's adapt it.
-           data = searchData.items.map((item: any) => ({
+        
+        if (searchData.error) {
+            toast({ variant: "destructive", title: "Error Pencarian", description: searchData.error || "Gagal memuat hasil." });
+            data = [];
+        } else {
+           data = (searchData.items || []).map((item: any) => ({
              id: item.id,
              title: item.title,
              thumbnailUrl: item.thumbnail,
@@ -88,9 +98,6 @@ function HomePageContent() {
              publishedAt: '',
              duration: ''
           }));
-          // Note: The proxy search API doesn't return cost/key info, so we can't track usage here.
-        } else {
-            toast({ variant: "destructive", title: "Error Pencarian", description: searchData.error || "Gagal memuat hasil." });
         }
       } else {
         let response: VideoApiResponse | null = null;
@@ -100,7 +107,7 @@ function HomePageContent() {
           response = await getVideosByCategory(category);
         }
         
-        if (response) {
+        if (response && response.videos) {
           data = response.videos;
           apiKeyIndex = response.apiKeyIndex;
           cost = response.cost;
@@ -108,21 +115,24 @@ function HomePageContent() {
         }
       }
       
+      setVideos(data);
       if (data.length > 0) {
-        sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        setVideos(data);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch (e) {
+            console.warn("Failed to write to sessionStorage", e);
+        }
         if (apiKeyIndex !== -1) {
           updateKeyUsage(apiKeyIndex, cost, totalApiKeys);
         }
-      } else {
-        setVideos([]);
       }
     } catch(err) {
       console.error("Gagal mengambil data video:", err);
+      toast({ variant: "destructive", title: "Gagal Memuat Video", description: "Terjadi masalah saat mengambil data. Coba muat ulang halaman." });
       setVideos([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
   
   useEffect(() => {
