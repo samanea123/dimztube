@@ -21,6 +21,32 @@ export default function SearchBar({
   const debounceRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 🔥 Fungsi ambil cache (sessionStorage)
+  const getCache = (query: string, cat: string) => {
+    try {
+      const key = `search:${cat}:${query.toLowerCase()}`;
+      const cached = sessionStorage.getItem(key);
+      if (!cached) return null;
+      const { data, ts } = JSON.parse(cached);
+      // cache valid 15 menit
+      if (Date.now() - ts < 15 * 60 * 1000) return data;
+      sessionStorage.removeItem(key); // Hapus cache kadaluarsa
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 🔥 Simpan cache
+  const setCache = (query: string, cat: string, data: any) => {
+    try {
+      const key = `search:${cat}:${query.toLowerCase()}`;
+      sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+    } catch (err) {
+      console.warn("Cache gagal disimpan", err);
+    }
+  };
+
 
   const doSearch = async (query: string) => {
     if (!query.trim()) {
@@ -28,14 +54,25 @@ export default function SearchBar({
         return;
     };
 
-    setLoading(true);
     setError(null);
+    
+    // 💾 Cek cache dulu
+    const cached = getCache(query, category);
+    if (cached) {
+      setResults(cached);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       const url = `/api/search?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`;
       const res = await fetch(url);
       const json = await res.json();
       if (res.ok) {
-        setResults(json.items || []);
+        const items = json.items || [];
+        setResults(items);
+        setCache(query, category, items); // Simpan ke cache
       } else {
         setError(json.error || "Gagal mengambil hasil pencarian");
         setResults([]);
@@ -54,6 +91,7 @@ export default function SearchBar({
         debounceRef.current = window.setTimeout(() => doSearch(q), 500);
     } else {
         setResults([]);
+        setError(null);
     }
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -91,7 +129,7 @@ export default function SearchBar({
           {!loading && !error && results.length > 0 && (
               <ul>
                 {results.map((r) => (
-                    <li key={r.id} onClick={() => onSelect?.(r)}
+                    <li key={r.id} onClick={() => { onSelect?.(r); setIsFocused(false); }}
                         className="p-2 flex items-center gap-3 hover:bg-muted cursor-pointer">
                     <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0">
                         <Image src={r.thumbnail} alt={r.title} fill className="object-cover" />
