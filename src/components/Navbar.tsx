@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import MirrorButton from "./MirrorButton";
 import type { VideoItem } from "./SearchBar";
-import SearchBarAdaptive from "./SearchBarAdaptive";
+import SearchBar from "./SearchBar";
 
 interface NavbarProps {
   onReload: () => void;
@@ -30,7 +30,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
       </div>
 
       <div className="flex-1 flex justify-center px-0 sm:px-4">
-        <SearchBarAdaptive category={category} onSelectVideo={onSelectVideo} />
+        <SearchBar category={category} onSelect={onSelectVideo} />
       </div>
 
       <div className="flex items-center gap-1">
