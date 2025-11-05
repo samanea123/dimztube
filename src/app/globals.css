@@ -85,6 +85,9 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  input[type="text"] {
+    min-width: 0;
+  }
 }
 
 @keyframes fadeIn {
