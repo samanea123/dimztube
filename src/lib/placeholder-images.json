@@ -45,7 +45,7 @@
     {
       "id": "thumbnail8",
       "description": "Modern gadgets",
-      "imageUrl": "https://images.unsplash.com/photo-1662348316783-74c476374fcb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBnYWRnZXRzfGVufDB8fHx8MTc2MjIzODk0NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1662348316783-74c476374fcb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBnYWRnZXRzfGVufDB8fHx8MTc2MjIzODk0NHww&ixlibrb-4.1.0&q=80&w=1080",
       "imageHint": "modern gadgets"
     },
     {
@@ -57,55 +57,55 @@
     {
       "id": "thumbnail10",
       "description": "Pop concert",
-      "imageUrl": "https://images.unsplash.com/photo-1741424151384-eb3607ccaafb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwb3AlMjBjb25jZXJ0fGVufDB8fHx8MTc2MjIzODk0NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1741424151384-eb3607ccaafb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwb3AlMjBjb25jZXJ0fGVufDB8fHx8MTc2MjIzODk0NHww&ixlibrb-4.1.0&q=80&w=1080",
       "imageHint": "pop concert"
     },
     {
       "id": "thumbnail11",
       "description": "Director chair",
-      "imageUrl": "https://images.unsplash.com/photo-1743463685461-e5cb0c0a0c76?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxkaXJlY3RvciUyMGNoYWlyfGVufDB8fHx8MTc2MjIwMDA3OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1743463685461-e5cb0c0a0c76?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxkaXJlY3RvciUyMGNoYWlyfGVufDB8fHx8MTc2MjIwMDA3OHww&ixlibrb-4.1.0&q=80&w=1080",
       "imageHint": "director chair"
     },
     {
       "id": "thumbnail12",
       "description": "E-sports arena",
-      "imageUrl": "https://images.unsplash.com/photo-1758410473619-c204b1bcf13a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxlc3BvcnRzJTIwYXJlbmF8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1758410473619-c204b1bcf13a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxlc3BvcnRzJTIwYXJlbmF8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlibrb-4.1.0&q=80&w=1080",
       "imageHint": "esports arena"
     },
     {
       "id": "avatar1",
-      "description": "Person smiling",
-      "imageUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwc21pbGluZ3xlbnwwfHx8fDE3NjIxNjQ1ODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "person smiling"
+      "description": "User avatar placeholder",
+      "imageUrl": "https://images.unsplash.com/photo-1704726135027-9c6f034cfa41?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx1c2VyJTIwYXZhdGFyfGVufDB8fHx8MTc2MjMxMDQyOXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "user avatar"
     },
     {
       "id": "avatar2",
       "description": "Abstract logo",
-      "imageUrl": "https://images.unsplash.com/photo-1761223956853-7c7c12ebff18?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzYyMjE1MTQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1761223956853-7c7c12ebff18?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGxvZ298ZW58MHx8fHwxNzYyMjE1MTQwfDA&ixlib-rb-4.1.0&q=80&w=1080",
       "imageHint": "abstract logo"
     },
     {
       "id": "avatar3",
       "description": "Gaming mascot",
-      "imageUrl": "https://images.unsplash.com/photo-1699542105807-4ac0805a878f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBtYXNjb3R8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1699542105807-4ac0805a878f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBtYXNjb3R8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib-rb-4.1.0&q=80&w=1080",
       "imageHint": "gaming mascot"
     },
     {
       "id": "avatar4",
       "description": "Music note logo",
-      "imageUrl": "https://images.unsplash.com/photo-1591025810539-a321000cda85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtdXNpYyUyMG5vdGV8ZW58MHx8fHwxNzYyMjMwODgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1591025810539-a321000cda85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtdXNpYyUyMG5vdGV8ZW58MHx8fHwxNzYyMjMwODgxfDA&ixlib-rb-4.1.0&q=80&w=1080",
       "imageHint": "music note"
     },
     {
       "id": "avatar5",
       "description": "Film camera icon",
-      "imageUrl": "https://images.unsplash.com/photo-1500705077387-65f31ef00c90?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmaWxtJTIwY2FtZXJhfGVufDB8fHx8MTc2MjE4NjgzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1500705077387-65f31ef00c90?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmaWxtJTIwY2FtZXJhfGVufDB8fHx8MTc2MjE4NjgzN3ww&ixlib-rb-4.1.0&q=80&w=1080",
       "imageHint": "film camera"
     },
     {
       "id": "avatar6",
       "description": "Broadcast signal",
-      "imageUrl": "https://images.unsplash.com/photo-1760751106665-c70eced8294a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxicm9hZGNhc3QlMjBzaWduYWx8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1760751106665-c70eced8294a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxicm9hZGNhc3QlMjBzaWduYWx8ZW58MHx8fHwxNzYyMjM4OTQ0fDA&ixlib-rb-4.1.0&q=80&w=1080",
       "imageHint": "broadcast signal"
     }
   ]
