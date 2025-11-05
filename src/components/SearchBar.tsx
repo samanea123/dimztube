@@ -189,6 +189,7 @@ export default function SearchBar({
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Cari di DimzTube..."
                         className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
+                        autoFocus
                     />
                     <Button
                         onClick={() => setIsMobileOpen(false)}

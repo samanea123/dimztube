@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { addToQueue, setQueue, setCurrentIndex, getQueue } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
@@ -129,8 +129,7 @@ export default function SearchPage() {
     const router = useRouter();
 
     const handleSelectVideoFromSearch = (video: SearchVideoItem) => {
-        // When a video is selected from search, we don't play it directly.
-        // We navigate to the search page instead.
+        // When a video is selected from search, we navigate to the search page.
         const term = video.title;
         router.push(`/search?q=${encodeURIComponent(term)}`);
     }
