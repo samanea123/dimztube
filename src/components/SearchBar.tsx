@@ -123,7 +123,7 @@ export default function SearchBar({
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => setIsFocused(true)}
         placeholder={`Cari video${category !== "Semua" ? ` dalam kategori ${category}`: ""}...`}
-        className="w-full h-10 pl-10 pr-4 rounded-full border bg-background focus:bg-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        className="flex h-10 w-full rounded-full border border-input bg-background px-3 py-2 text-sm md:text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
       />
       {isFocused && (q.length > 0 || loading || error) && (
         <div className="absolute left-0 right-0 mt-2 bg-card border rounded-lg shadow-lg max-h-96 overflow-auto z-50">
@@ -160,3 +160,4 @@ export default function SearchBar({
     </div>
   );
 }
+
