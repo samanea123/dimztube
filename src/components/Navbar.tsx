@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import MirrorButton from "./MirrorButton";
 import SearchBar, { type VideoItem } from "./SearchBar";
+import SearchBarMobile from "./SearchBarMobile";
 
 interface NavbarProps {
   onReload: () => void;
@@ -30,7 +31,7 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
       </div>
 
       <div className="flex-1 flex justify-center px-0 sm:px-4">
-        <div className="w-full max-w-xl flex items-center">
+        <div className="w-full max-w-xl items-center hidden sm:flex">
             <SearchBar category={category} onSelect={onSelectVideo} />
             <Button variant="ghost" size="icon" className="ml-2 flex-shrink-0">
                 <Mic className="h-5 w-5" />
@@ -39,6 +40,9 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
       </div>
 
       <div className="flex items-center gap-1">
+        <div className="sm:hidden">
+            <SearchBarMobile />
+        </div>
         <Button
           variant="ghost"
           size="icon"
