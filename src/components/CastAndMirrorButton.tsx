@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Cast, Monitor, MonitorSmartphone, Tv, X } from 'lucide-react';
 import { useCastManager } from '@/lib/useCastManager';
@@ -23,16 +19,39 @@ export default function CastAndMirrorButton() {
     },
   });
 
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
   const isActive = status === 'connected';
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [containerRef]);
+
   const handleMiracast = () => {
-    const currentVideoUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`;
+    setIsOpen(false);
+    const currentVideoUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`; // Dummy URL
     startMiracast(currentVideoUrl);
   };
 
   const handleMirror = () => {
+    setIsOpen(false);
     startMirror();
   };
+  
+  const handleToggle = () => {
+      if (isActive) {
+          stopSession();
+      } else {
+          setIsOpen(!isOpen);
+      }
+  }
 
   if (isActive) {
     return (
@@ -55,54 +74,51 @@ export default function CastAndMirrorButton() {
   }
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <div className="relative" ref={containerRef}>
         <Button
           variant="ghost"
           size="icon"
           className="hover:text-primary"
           aria-label="Cast to device"
+          onClick={handleToggle}
         >
           <Cast className="h-5 w-5" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64">
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
-            <p className="text-sm text-muted-foreground">
-              Pilih mode untuk menampilkan konten di layar lain.
-            </p>
-          </div>
-          <div className="grid gap-2">
-            {/* Tombol Chromecast bawaan */}
-             <div className="flex items-center gap-2 hover:bg-muted p-2 rounded-md">
-                <Tv className="mr-2 h-4 w-4" />
-                <google-cast-launcher class="cast-button-in-popover" />
+      
+        {isOpen && (
+             <div className="absolute top-full right-0 mt-2 w-64 bg-card rounded-xl shadow-lg border p-2 z-[9999] animate-fadeIn">
+                <div className="space-y-2 mb-2 p-2">
+                    <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
+                    <p className="text-sm text-muted-foreground">
+                    Pilih mode untuk menampilkan konten.
+                    </p>
+                </div>
+                <div className="grid gap-1">
+                    {/* Tombol Chromecast bawaan */}
+                    <div className="flex items-center gap-2 hover:bg-muted p-2 rounded-md cursor-pointer">
+                        <Tv className="mr-2 h-4 w-4" />
+                        <google-cast-launcher class="cast-button-in-popover" />
+                    </div>
+                    
+                    <button
+                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
+                        onClick={handleMiracast}
+                    >
+                       <MonitorSmartphone className="mr-2 h-4 w-4" />
+                        Cast Video (Miracast)
+                    </button>
+                    <button
+                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted mt-1"
+                        onClick={handleMirror}
+                    >
+                        <Monitor className="mr-2 h-4 w-4" />
+                        Mirror Tampilan Penuh
+                    </button>
+
+                    <Button variant="outline" size="sm" className="mt-2" onClick={() => setIsOpen(false)}>Batal</Button>
+                </div>
              </div>
-            
-            <Button
-              variant="ghost"
-              className="justify-start"
-              onClick={handleMiracast}
-            >
-              <MonitorSmartphone className="mr-2 h-4 w-4" />
-              Cast Video (Miracast)
-            </Button>
-            <Button
-              variant="ghost"
-              className="justify-start"
-              onClick={handleMirror}
-            >
-              <Monitor className="mr-2 h-4 w-4" />
-              Mirror Tampilan Penuh
-            </Button>
-             <PopoverTrigger asChild>
-              <Button variant="outline">Batal</Button>
-            </PopoverTrigger>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        )}
+    </div>
   );
 }
