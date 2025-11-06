@@ -8,6 +8,7 @@ import {
   updateDoc,
   Unsubscribe,
   getFirestore,
+  deleteField,
 } from 'firebase/firestore';
 
 // Inisialisasi Firestore di sini karena file ini 'use client'
@@ -56,7 +57,13 @@ export async function createSession(): Promise<string> {
 
 export async function updateSession(sessionId: string, data: Partial<WebRTCSession>) {
     const docRef = doc(getDb(), 'webrtc_sessions', sessionId);
-    await updateDoc(docRef, data);
+    // Use deleteField for properties you want to remove, e.g., offer and answer on disconnect.
+    const finalData = { ...data };
+    if (data.status === 'disconnected') {
+      finalData.offer = deleteField() as any;
+      finalData.answer = deleteField() as any;
+    }
+    await updateDoc(docRef, finalData);
 }
 
 export function onSessionUpdate(sessionId: string, callback: (session: WebRTCSession | null) => void): Unsubscribe {

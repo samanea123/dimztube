@@ -20,15 +20,39 @@ export default function SenderPage() {
   const [status, setStatus] = useState<Status>('waiting');
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   
   const firestore = useFirestore();
 
+  const stopCasting = async (notify = true) => {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (sessionId) {
+      await updateSession(sessionId, { status: 'disconnected' });
+    }
+    setStatus('disconnected');
+    if (notify) {
+      toast({ title: '✅ Sesi Cast Dihentikan' });
+      setTimeout(() => window.close(), 1500);
+    }
+  };
+
   const startCasting = async () => {
-    if (!firestore || !sessionId) return;
+    if (!firestore || !sessionId || status === 'requesting' || status === 'streaming') return;
     setStatus('requesting');
 
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      streamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
@@ -46,20 +70,24 @@ export default function SenderPage() {
 
       pc.onconnectionstatechange = () => {
           if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-              setStatus('disconnected');
+              if (status !== 'disconnected') { // Avoid multiple toasts
+                stopCasting(true);
+              }
           }
           if (pc.connectionState === 'connected') {
               setStatus('streaming');
           }
       };
+
+      stream.getVideoTracks()[0].addEventListener('ended', () => stopCasting(false));
       
       onIceCandidate(sessionId, 'receiver', (candidate) => {
-        if (pc.remoteDescription && pc.signalingState !== 'closed') {
+        if (pc.remoteDescription) {
           pc.addIceCandidate(new RTCIceCandidate(candidate));
         }
       });
       
-      const unsubSession = onSessionUpdate(sessionId, async (session) => {
+      onSessionUpdate(sessionId, async (session) => {
         if (session?.answer && pc.signalingState !== 'stable') {
            try {
             await pc.setRemoteDescription(new RTCSessionDescription(session.answer));
@@ -82,27 +110,23 @@ export default function SenderPage() {
         description: 'Anda mungkin telah membatalkan permintaan atau browser tidak mendukung fitur ini.',
       });
       setStatus('failed');
-      if (sessionId) {
-        await updateSession(sessionId, { status: 'disconnected' });
-      }
+      await updateSession(sessionId, { status: 'disconnected' });
     }
   };
   
-  const stopCasting = async () => {
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
+  useEffect(() => {
+    if(firestore && sessionId && status === 'waiting') {
+        startCasting();
     }
-    if (localVideoRef.current?.srcObject) {
-        (localVideoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+    
+    // Cleanup on unmount
+    return () => {
+      if (pcRef.current) {
+        stopCasting(false);
+      }
     }
-    if (sessionId) {
-      await updateSession(sessionId, { status: 'disconnected', offer: undefined, answer: undefined });
-    }
-    setStatus('disconnected');
-    toast({ title: 'Sesi Cast Dihentikan' });
-    setTimeout(() => window.close(), 1000);
-  }
+  }, [firestore, sessionId]);
+
 
   const renderStatus = () => {
       switch(status) {
@@ -130,20 +154,6 @@ export default function SenderPage() {
           case 'disconnected': return <XCircle className="h-10 w-10 text-muted-foreground" />;
       }
   }
-  
-  useEffect(() => {
-    if(firestore && sessionId && status === 'waiting') {
-        startCasting();
-    }
-    
-    return () => {
-      // Clean up on unmount or if session ID changes
-      if (status === 'streaming') {
-        stopCasting();
-      }
-    }
-  }, [firestore, sessionId]);
-
 
   return (
     <div className="w-screen h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-4">
@@ -169,9 +179,9 @@ export default function SenderPage() {
             <p className="text-lg font-medium mb-6">{renderStatus()}</p>
 
             {status === 'streaming' || status === 'requesting' ? (
-                <Button size="lg" variant="destructive" onClick={stopCasting}>Hentikan Cast</Button>
+                <Button size="lg" variant="destructive" onClick={() => stopCasting(true)}>Hentikan Cast</Button>
             ) : (
-                 <Button size="lg" onClick={() => window.location.reload()}>Coba Lagi</Button>
+                 <Button size="lg" onClick={startCasting}>Mulai Cast</Button>
             )}
             
             <video ref={localVideoRef} autoPlay muted playsInline className="mt-6 w-full rounded-lg border bg-black aspect-video" />

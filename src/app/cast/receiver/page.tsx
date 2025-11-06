@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 
 
-type Status = 'generating' | 'waiting' | 'connecting' | 'connected' | 'failed';
+type Status = 'generating' | 'waiting' | 'connecting' | 'connected' | 'failed' | 'disconnected';
 
 export default function ReceiverPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -19,10 +19,16 @@ export default function ReceiverPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   
-  // Inisialisasi Firestore di client-side
   const firestore = useFirestore();
 
-  // Membuat sesi WebRTC baru
+  const resetState = () => {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    setStatus('disconnected');
+  };
+
   useEffect(() => {
     if (!firestore) return;
 
@@ -41,7 +47,6 @@ export default function ReceiverPage() {
     initializeSession();
   }, [firestore]);
 
-  // Logika WebRTC untuk Receiver
   useEffect(() => {
     if (!sessionId || !firestore) return;
     
@@ -63,22 +68,22 @@ export default function ReceiverPage() {
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-        setStatus('failed');
-        // Reset and prepare for a new connection if needed
-        pc.close();
-        // Potentially re-initialize the peer connection here or reset the page state
-        window.location.reload(); // Simple reload for now
+        resetState();
       }
     };
     
     const unsubscribeIce = onIceCandidate(sessionId, 'sender', (candidate) => {
-        if (pc.signalingState !== 'closed') {
-            pc.addIceCandidate(new RTCIceCandidate(candidate));
-        }
+       if (pc.remoteDescription) {
+          pc.addIceCandidate(new RTCIceCandidate(candidate));
+       }
     });
 
     const unsubscribeSession = onSessionUpdate(sessionId, async (session) => {
-      // Hanya proses offer jika belum ada remote description
+      if (session?.status === 'disconnected') {
+        resetState();
+        return;
+      }
+      
       if (session?.offer && !pc.currentRemoteDescription) {
         try {
             setStatus('connecting');
@@ -87,22 +92,19 @@ export default function ReceiverPage() {
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
-            await updateSession(sessionId, { answer });
+            await updateSession(sessionId, { answer, status: 'connecting' });
         } catch (error) {
             console.error("Gagal membuat answer atau set description:", error);
             setStatus('failed');
         }
-      } else if(session?.status === 'disconnected') {
-        pc.close();
-        setStatus('failed');
       }
     });
 
     return () => {
       unsubscribeIce();
       unsubscribeSession();
-      if (pc.signalingState !== 'closed') {
-        pc.close();
+      if (pcRef.current) {
+        pcRef.current.close();
       }
     };
 
@@ -119,7 +121,9 @@ export default function ReceiverPage() {
           case 'connected':
               return <div className="flex flex-col items-center gap-2"><CheckCircle className="h-6 w-6 text-green-500"/><span>Terhubung</span></div>;
           case 'failed':
-              return <div className="flex flex-col items-center gap-2 text-destructive"><WifiOff className="h-6 w-6"/><span>Koneksi Gagal/Terputus</span></div>;
+              return <div className="flex flex-col items-center gap-2 text-destructive"><WifiOff className="h-6 w-6"/><span>Koneksi Gagal</span></div>;
+          case 'disconnected':
+               return <div className="flex flex-col items-center gap-2"><WifiOff className="h-6 w-6"/><span>Koneksi Terputus</span></div>;
       }
   }
 
