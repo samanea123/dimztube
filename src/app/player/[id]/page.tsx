@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { getQueue, getSettings, setCurrentIndex, playNext } from '@/lib/queue';
+import { getQueue, getSettings, setCurrentIndex, playNext, playPrev } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PlayerPage() {
@@ -48,6 +48,60 @@ export default function PlayerPage() {
   }, [toast]);
 
 
+  const handleVideoEnd = (forceNext = false) => {
+    const queue = getQueue();
+    const settings = getSettings();
+    const currentIndex = queue.findIndex(v => v.id === videoId);
+
+    if (currentIndex === -1) {
+      // Jika video tidak ada di antrian, tutup saja kecuali dipaksa main selanjutnya
+      if (!forceNext) window.close();
+      return;
+    }
+  
+    let nextIndex = -1;
+
+    if (forceNext) {
+        // Logika untuk 'nexttrack'
+        if (currentIndex < queue.length - 1) {
+            nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
+        } else if (settings.repeat) {
+            nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : 0;
+        }
+    } else {
+        // Logika untuk video berakhir secara alami
+        if (currentIndex < queue.length - 1) {
+           nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
+        } else if (settings.repeat) {
+           nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : 0;
+        }
+    }
+    
+    if (nextIndex !== -1) {
+      setCurrentIndex(nextIndex);
+      window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
+    } else {
+      // Jika tidak ada video selanjutnya dan tidak repeat, tutup tab
+      window.close();
+    }
+  };
+
+
+  const handlePlayPrev = () => {
+      const queue = getQueue();
+      const currentIndex = queue.findIndex(v => v.id === videoId);
+      const settings = getSettings();
+
+      if (queue.length === 0 || currentIndex === -1) return;
+      
+      // Jika di awal dan tidak repeat, jangan lakukan apa-apa
+      if (currentIndex === 0 && !settings.repeat) return;
+
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
+      setCurrentIndex(prevIndex);
+      window.location.href = `/player/${queue[prevIndex].id}?autoplay=1`;
+  }
+
   const setupMediaSession = () => {
     if (!('mediaSession' in navigator)) {
       return;
@@ -67,25 +121,11 @@ export default function PlayerPage() {
       ],
     });
 
-    navigator.mediaSession.setActionHandler('play', () => {
-        playerRef.current?.playVideo();
-    });
-    navigator.mediaSession.setActionHandler('pause', () => {
-        playerRef.current?.pauseVideo();
-    });
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-       const queue = getQueue();
-       const currentIndex = queue.findIndex(v => v.id === videoId);
-       if (currentIndex > 0) {
-           const prevIndex = currentIndex - 1;
-           setCurrentIndex(prevIndex);
-           window.location.href = `/player/${queue[prevIndex].id}?autoplay=1`;
-       }
-    });
-    navigator.mediaSession.setActionHandler('nexttrack', () => {
-        handleVideoEnd(true); // Treat as video end to play next
-    });
-
+    navigator.mediaSession.setActionHandler('play', () => playerRef.current?.playVideo());
+    navigator.mediaSession.setActionHandler('pause', () => playerRef.current?.pauseVideo());
+    navigator.mediaSession.setActionHandler('stop', () => window.close());
+    navigator.mediaSession.setActionHandler('previoustrack', handlePlayPrev);
+    navigator.mediaSession.setActionHandler('nexttrack', () => handleVideoEnd(true));
   };
 
   useEffect(() => {
@@ -174,33 +214,6 @@ export default function PlayerPage() {
         navigator.mediaSession.playbackState = "paused";
     }
   }
-
-  const handleVideoEnd = (forceNext = false) => {
-    const queue = getQueue();
-    const settings = getSettings();
-    const currentIndex = queue.findIndex(v => v.id === videoId);
-
-    if (currentIndex === -1) {
-        if (!forceNext) window.close();
-        return;
-    }
-
-    if (currentIndex === queue.length - 1) {
-        if (settings.repeat || forceNext) {
-            if (queue.length > 0) {
-                const nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : 0;
-                setCurrentIndex(nextIndex);
-                window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
-            }
-        } else if (!forceNext) {
-            window.close();
-        }
-    } else {
-        const nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
-        setCurrentIndex(nextIndex);
-        window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
-    }
-  };
 
   const handleUnmute = () => {
       if (playerRef.current) {
