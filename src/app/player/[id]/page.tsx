@@ -10,6 +10,7 @@ export default function PlayerPage() {
   const searchParams = useSearchParams();
   const videoId = params.id as string;
   const playerRef = useRef<any>(null);
+  const videoElementRef = useRef<HTMLElement | null>(null);
   const isAutoplay = searchParams.get('autoplay') === '1';
   const { toast } = useToast();
   const wasPlayingBeforeHidden = useRef(false);
@@ -54,7 +55,6 @@ export default function PlayerPage() {
     const currentIndex = queue.findIndex(v => v.id === videoId);
 
     if (currentIndex === -1) {
-      // Jika video tidak ada di antrian, tutup saja kecuali dipaksa main selanjutnya
       if (!forceNext) window.close();
       return;
     }
@@ -62,14 +62,12 @@ export default function PlayerPage() {
     let nextIndex = -1;
 
     if (forceNext) {
-        // Logika untuk 'nexttrack'
         if (currentIndex < queue.length - 1) {
             nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
         } else if (settings.repeat) {
             nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : 0;
         }
     } else {
-        // Logika untuk video berakhir secara alami
         if (currentIndex < queue.length - 1) {
            nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
         } else if (settings.repeat) {
@@ -81,7 +79,6 @@ export default function PlayerPage() {
       setCurrentIndex(nextIndex);
       window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
     } else {
-      // Jika tidak ada video selanjutnya dan tidak repeat, tutup tab
       window.close();
     }
   };
@@ -94,7 +91,6 @@ export default function PlayerPage() {
 
       if (queue.length === 0 || currentIndex === -1) return;
       
-      // Jika di awal dan tidak repeat, jangan lakukan apa-apa
       if (currentIndex === 0 && !settings.repeat) return;
 
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
@@ -127,6 +123,16 @@ export default function PlayerPage() {
     navigator.mediaSession.setActionHandler('previoustrack', handlePlayPrev);
     navigator.mediaSession.setActionHandler('nexttrack', () => handleVideoEnd(true));
   };
+  
+  const handleEnterPiP = () => {
+    toast({
+        title: "📺 Video tetap berjalan di layar kecil."
+    });
+  }
+
+  const handleLeavePiP = () => {
+    // Optional: add any logic needed when PiP is exited.
+  }
 
   useEffect(() => {
     if (window.YT && window.YT.Player) {
@@ -149,18 +155,24 @@ export default function PlayerPage() {
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
       document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
       document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+      
+      if (videoElementRef.current) {
+        videoElementRef.current.removeEventListener('enterpictureinpicture', handleEnterPiP);
+        videoElementRef.current.removeEventListener('leavepictureinpicture', handleLeavePiP);
+      }
     };
   }, [videoId]);
 
   const handleFullscreenChange = () => {
-    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    const isFullscreen = document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).mozFullScreenElement || (document as any).msFullscreenElement;
     if (!isFullscreen && screen.orientation && screen.orientation.unlock) {
       screen.orientation.unlock();
     }
   };
 
   function onYouTubeIframeAPIReady() {
-    if (!document.getElementById('player')) return;
+    const playerElement = document.getElementById('player');
+    if (!playerElement) return;
     
     playerRef.current = new YT.Player('player', {
       videoId: videoId,
@@ -179,17 +191,25 @@ export default function PlayerPage() {
 
   async function onPlayerReady(event: any) {
     setupMediaSession();
+
+    // Attach PiP listeners
+    videoElementRef.current = event.target.getIframe()?.contentDocument?.querySelector('video');
+    if (videoElementRef.current) {
+        videoElementRef.current.addEventListener('enterpictureinpicture', handleEnterPiP);
+        videoElementRef.current.addEventListener('leavepictureinpicture', handleLeavePiP);
+    }
+    
     if (isAutoplay) {
       event.target.playVideo();
 
       try {
         const iframe = document.getElementById('player');
-        if (iframe?.requestFullscreen) await iframe.requestFullscreen();
-        else if (iframe?.mozRequestFullScreen) await iframe.mozRequestFullScreen();
-        else if (iframe?.webkitRequestFullScreen) await iframe.webkitRequestFullScreen();
+        if (iframe?.requestFullscreen) await iframe.requestFullscreen({ navigationUI: "hide" });
+        else if ((iframe as any)?.mozRequestFullScreen) await (iframe as any).mozRequestFullScreen();
+        else if ((iframe as any)?.webkitRequestFullScreen) await (iframe as any).webkitRequestFullScreen();
         
         if (screen.orientation && screen.orientation.lock) {
-            await screen.orientation.lock("landscape");
+            await screen.orientation.lock("landscape").catch(e => console.warn("Gagal mengunci orientasi:", e));
         }
       } catch (e) {
         console.warn("Gagal masuk fullscreen atau rotasi otomatis:", e);
