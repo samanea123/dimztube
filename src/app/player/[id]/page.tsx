@@ -180,7 +180,6 @@ export default function PlayerPage() {
   async function onPlayerReady(event: any) {
     setupMediaSession();
     if (isAutoplay) {
-      event.target.mute();
       event.target.playVideo();
 
       try {
@@ -199,18 +198,25 @@ export default function PlayerPage() {
   }
 
   function onPlayerStateChange(event: any) {
-    if (event.data === YT.PlayerState.PLAYING && playerRef.current.isMuted()) {
-        const unmuteButton = document.getElementById("unmute");
-        if (unmuteButton) {
-            unmuteButton.style.display = "block";
+    if (event.data === YT.PlayerState.PLAYING) {
+        if (playerRef.current.isMuted()) {
+            const unmuteButton = document.getElementById("unmute");
+            if (unmuteButton) {
+                unmuteButton.style.display = "block";
+            }
+        } else {
+             if (isAutoplay && !wasPlayingBeforeHidden.current) {
+                toast({
+                    title: "🎧 Pemutaran di background aktif",
+                });
+             }
         }
+        navigator.mediaSession.playbackState = "playing";
     }
     if (event.data === YT.PlayerState.ENDED) {
         handleVideoEnd();
     }
-     if (event.data === YT.PlayerState.PLAYING) {
-        navigator.mediaSession.playbackState = "playing";
-    } else if (event.data === YT.PlayerState.PAUSED) {
+    if (event.data === YT.PlayerState.PAUSED) {
         navigator.mediaSession.playbackState = "paused";
     }
   }
