@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Monitor, Phone, Wifi, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getFirestore } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 
 type Status = 'waiting' | 'requesting' | 'streaming' | 'failed' | 'disconnected';
@@ -20,26 +20,11 @@ export default function SenderPage() {
   const [status, setStatus] = useState<Status>('waiting');
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  const [firestoreInitialized, setFirestoreInitialized] = useState(false);
-
-  useEffect(() => {
-    try {
-      getFirestore();
-      setFirestoreInitialized(true);
-    } catch (e) {
-      console.error("Firebase belum siap, halaman ini tidak dapat berfungsi.", e);
-      setStatus('failed');
-       toast({
-        variant: 'destructive',
-        title: 'Error Koneksi',
-        description: 'Gagal terhubung ke layanan Firebase.',
-      });
-    }
-  }, [toast]);
-
+  
+  const firestore = useFirestore();
 
   const startCasting = async () => {
-    if (!firestoreInitialized || !sessionId) return;
+    if (!firestore || !sessionId) return;
     setStatus('requesting');
 
     try {
@@ -68,15 +53,20 @@ export default function SenderPage() {
           }
       };
       
-      const unsubSession = onSessionUpdate(sessionId, async (session) => {
-        if (session?.answer && pc.signalingState !== 'stable') {
-          await pc.setRemoteDescription(new RTCSessionDescription(session.answer));
+      onIceCandidate(sessionId, 'receiver', (candidate) => {
+        if (pc.remoteDescription && pc.signalingState !== 'closed') {
+          pc.addIceCandidate(new RTCIceCandidate(candidate));
         }
       });
       
-      onIceCandidate(sessionId, 'receiver', (candidate) => {
-        if (pc.remoteDescription) {
-          pc.addIceCandidate(new RTCIceCandidate(candidate));
+      const unsubSession = onSessionUpdate(sessionId, async (session) => {
+        if (session?.answer && pc.signalingState !== 'stable') {
+           try {
+            await pc.setRemoteDescription(new RTCSessionDescription(session.answer));
+          } catch (e) {
+            console.error("Error setting remote description", e);
+            setStatus('failed');
+          }
         }
       });
       
@@ -93,20 +83,24 @@ export default function SenderPage() {
       });
       setStatus('failed');
       if (sessionId) {
-        updateSession(sessionId, { status: 'disconnected' });
+        await updateSession(sessionId, { status: 'disconnected' });
       }
     }
   };
   
-  const stopCasting = () => {
-    pcRef.current?.close();
+  const stopCasting = async () => {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
     if (localVideoRef.current?.srcObject) {
         (localVideoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
     }
     if (sessionId) {
-      updateSession(sessionId, { status: 'disconnected' });
+      await updateSession(sessionId, { status: 'disconnected', offer: undefined, answer: undefined });
     }
     setStatus('disconnected');
+    toast({ title: 'Sesi Cast Dihentikan' });
     setTimeout(() => window.close(), 1000);
   }
 
@@ -138,11 +132,17 @@ export default function SenderPage() {
   }
   
   useEffect(() => {
-    // Automatically start casting when component mounts
-    if(firestoreInitialized && sessionId) {
+    if(firestore && sessionId && status === 'waiting') {
         startCasting();
     }
-  }, [firestoreInitialized, sessionId]);
+    
+    return () => {
+      // Clean up on unmount or if session ID changes
+      if (status === 'streaming') {
+        stopCasting();
+      }
+    }
+  }, [firestore, sessionId]);
 
 
   return (

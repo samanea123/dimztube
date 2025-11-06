@@ -4,8 +4,6 @@ import {
   collection,
   doc,
   addDoc,
-  getDoc,
-  setDoc,
   onSnapshot,
   updateDoc,
   Unsubscribe,
@@ -15,10 +13,15 @@ import {
 // Inisialisasi Firestore di sini karena file ini 'use client'
 // dan mungkin diimpor di tempat yang belum tentu punya akses ke provider.
 let db: any;
-try {
-    db = getFirestore();
-} catch (e) {
-    console.warn("Firestore belum diinisialisasi, akan dicoba lagi nanti.", e)
+const getDb = () => {
+    if (!db) {
+        try {
+            db = getFirestore();
+        } catch (e) {
+             console.error("Gagal mendapatkan instance Firestore. Pastikan FirebaseProvider ada di root.", e)
+        }
+    }
+    return db;
 }
 
 
@@ -41,15 +44,6 @@ export interface WebRTCSession {
     status?: 'waiting' | 'connecting' | 'connected' | 'disconnected';
     createdAt?: number;
 }
-
-
-const getDb = () => {
-    if (!db) {
-        db = getFirestore();
-    }
-    return db;
-}
-
 
 export async function createSession(): Promise<string> {
     const docRef = await addDoc(collection(getDb(), 'webrtc_sessions'), {

@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 export default function CastAndMirrorButton() {
   const { toast } = useToast();
-  const { status, mode, startMiracast, stopSession, startAutoCast } = useCastManager();
+  const { status, mode, stopSession, startAutoCast } = useCastManager();
 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);

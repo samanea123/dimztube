@@ -6,35 +6,25 @@ import { createSession, onSessionUpdate, updateSession, addIceCandidate, onIceCa
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Tv2, ScanLine, CheckCircle, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getFirestore } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 
 type Status = 'generating' | 'waiting' | 'connecting' | 'connected' | 'failed';
 
-// Komponen ini harus dibungkus dalam FirebaseProvider di layout
 export default function ReceiverPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>('generating');
   const [senderUrl, setSenderUrl] = useState<string>('');
-  const [firestoreInitialized, setFirestoreInitialized] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
-
+  
   // Inisialisasi Firestore di client-side
-  useEffect(() => {
-    try {
-      getFirestore();
-      setFirestoreInitialized(true);
-    } catch (e) {
-      console.error("Firebase belum siap, halaman ini tidak dapat berfungsi.", e);
-      setStatus('failed');
-    }
-  }, []);
+  const firestore = useFirestore();
 
   // Membuat sesi WebRTC baru
   useEffect(() => {
-    if (!firestoreInitialized) return;
+    if (!firestore) return;
 
     async function initializeSession() {
         try {
@@ -49,11 +39,11 @@ export default function ReceiverPage() {
         }
     }
     initializeSession();
-  }, [firestoreInitialized]);
+  }, [firestore]);
 
   // Logika WebRTC untuk Receiver
   useEffect(() => {
-    if (!sessionId || !firestoreInitialized) return;
+    if (!sessionId || !firestore) return;
     
     const pc = new RTCPeerConnection(servers);
     pcRef.current = pc;
@@ -70,9 +60,21 @@ export default function ReceiverPage() {
         setStatus('connected');
       }
     };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        setStatus('failed');
+        // Reset and prepare for a new connection if needed
+        pc.close();
+        // Potentially re-initialize the peer connection here or reset the page state
+        window.location.reload(); // Simple reload for now
+      }
+    };
     
     const unsubscribeIce = onIceCandidate(sessionId, 'sender', (candidate) => {
-        pc.addIceCandidate(new RTCIceCandidate(candidate));
+        if (pc.signalingState !== 'closed') {
+            pc.addIceCandidate(new RTCIceCandidate(candidate));
+        }
     });
 
     const unsubscribeSession = onSessionUpdate(sessionId, async (session) => {
@@ -99,10 +101,12 @@ export default function ReceiverPage() {
     return () => {
       unsubscribeIce();
       unsubscribeSession();
-      pc.close();
+      if (pc.signalingState !== 'closed') {
+        pc.close();
+      }
     };
 
-  }, [sessionId, firestoreInitialized]);
+  }, [sessionId, firestore]);
 
   const renderStatus = () => {
       switch(status) {
@@ -119,21 +123,8 @@ export default function ReceiverPage() {
       }
   }
 
-  if (!firestoreInitialized) {
-      return (
-        <div className="w-screen h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-8">
-            <Card className="bg-neutral-800 border-neutral-700 text-white max-w-md w-full">
-                <CardHeader className="text-center">
-                    <CardTitle>Error</CardTitle>
-                    <CardDescription className="text-destructive">Gagal terhubung ke layanan Firebase. Pastikan aplikasi telah dikonfigurasi dengan benar.</CardDescription>
-                </CardHeader>
-            </Card>
-        </div>
-      )
-  }
-
   return (
-    <div className="w-screen h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-8">
+    <div className="w-screen h-screen bg-black text-white flex flex-col items-center justify-center p-8">
         <video ref={videoRef} autoPlay playsInline className={cn(
             "absolute top-0 left-0 w-full h-full object-contain transition-opacity duration-500",
             status === 'connected' ? 'opacity-100' : 'opacity-0'
@@ -141,9 +132,9 @@ export default function ReceiverPage() {
 
         <div className={cn(
             "z-10 transition-opacity duration-500",
-            status === 'connected' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            status === 'connected' ? 'opacity-0 hover:opacity-80' : 'opacity-100'
         )}>
-            <Card className="bg-neutral-800 border-neutral-700 text-white max-w-md w-full">
+            <Card className="bg-neutral-800/90 border-neutral-700 text-white max-w-md w-full backdrop-blur-sm">
                 <CardHeader className="text-center">
                     <div className="flex justify-center mb-4">
                         <Tv2 className="w-12 h-12 text-primary"/>
