@@ -39,17 +39,33 @@ function HomePageContent() {
   const updateKeyUsage = (apiKeyIndex: number, cost: number, totalKeys: number) => {
     if (typeof window === 'undefined' || apiKeyIndex === -1) return;
 
-    const storedUsage = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
-    let keys: KeyUsage[] = storedUsage;
+    let keys: KeyUsage[];
+    try {
+        const storedUsage = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
+        // Ensure the stored data is an array
+        if (Array.isArray(storedUsage)) {
+            keys = storedUsage;
+        } else {
+            keys = [];
+        }
+    } catch (e) {
+        keys = []; // Start fresh if storage is corrupted
+    }
 
+    // Initialize or fix the keys array if it's empty or doesn't match the total number of keys
     if (keys.length !== totalKeys) {
-        keys = Array.from({ length: totalKeys }, (_, i) => ({ id: i, used: 0 }));
+        keys = Array.from({ length: totalKeys }, (_, i) => {
+            const existingKey = keys.find(k => k.id === i);
+            return existingKey || { id: i, used: 0 };
+        });
     }
 
     const keyToUpdate = keys.find(k => k.id === apiKeyIndex);
     if (keyToUpdate) {
         keyToUpdate.used += cost;
-    } else if (apiKeyIndex >= 0 && apiKeyIndex < totalKeys) {
+    } 
+    // This part is redundant if the array is already initialized correctly, but good as a safeguard.
+    else if (apiKeyIndex >= 0 && apiKeyIndex < totalKeys) {
         keys[apiKeyIndex] = { id: apiKeyIndex, used: cost };
     }
     
