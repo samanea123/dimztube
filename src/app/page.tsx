@@ -290,12 +290,13 @@ function HomePageContent() {
   );
 }
 
-
-export default function HomePageContainer() {
-  // Wrap with Suspense for useSearchParams
+// Wrapper component to provide Suspense context for useSearchParams
+function HomePageWrapper() {
   return (
     <React.Suspense fallback={<div>Loading...</div>}>
       <HomePageContent />
     </React.Suspense>
-  )
+  );
 }
+
+export default HomePageWrapper;
