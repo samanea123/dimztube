@@ -19,18 +19,12 @@ export default function SearchBar({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   
   const debounceRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    if (isMobileOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isMobileOpen]);
 
   // Cache functions
   const getCache = (query: string, cat: string) => {
@@ -97,7 +91,6 @@ export default function SearchBar({
       if (!term) return;
 
       setIsFocused(false);
-      setIsMobileOpen(false);
       // Navigate to home page with search query
       router.push(`/?q=${encodeURIComponent(term)}`);
   };
@@ -142,32 +135,18 @@ export default function SearchBar({
         router.push(`/?q=${encodeURIComponent(video.title)}`);
     }
     setIsFocused(false);
-    setIsMobileOpen(false);
     setQ('');
     setResults([]);
   };
 
   return (
-    <div className="w-full max-w-xl items-center" ref={containerRef}>
-        {/* Mobile: Search Icon Button */}
-        <div className="sm:hidden flex justify-end">
-            <Button
-                onClick={() => setIsMobileOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="sm:hidden"
-                aria-label="Buka Pencarian"
-            >
-                <Search className="h-5 w-5" />
-            </Button>
-        </div>
-        
-        {/* Desktop: Always visible search bar */}
-        <form onSubmit={handleSubmit} className="relative hidden sm:flex w-full items-center">
+    <div className="w-full max-w-xl items-center relative" ref={containerRef}>
+        <form onSubmit={handleSubmit} className="flex w-full items-center">
              <button type="submit" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10 bg-transparent border-none p-0">
                 <Search className="h-full w-full" />
              </button>
              <input
+                ref={inputRef}
                 type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -180,97 +159,38 @@ export default function SearchBar({
              </Button>
         </form>
 
-        {/* Mobile: Fullscreen Overlay */}
-        {isMobileOpen && (
-            <div className="fixed inset-0 z-50 bg-background animate-fadeIn flex flex-col">
-                <form onSubmit={handleSubmit} className="flex items-center p-3 gap-2 border-b">
-                    <button type="submit" className="p-0 bg-transparent border-none">
-                        <Search className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                    <input
-                        ref={inputRef}
-                        type="search"
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder="Cari di DimzTube..."
-                        className="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-base"
-                        autoFocus
-                    />
-                    <Button
-                        onClick={() => setIsMobileOpen(false)}
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Tutup Pencarian"
-                    >
-                        <X className="h-5 w-5" />
-                    </Button>
-                </form>
-                {/* Mobile Results */}
-                 <div className="flex-1 overflow-y-auto">
-                    {loading && (
-                        <div className="p-4 flex items-center justify-center text-muted-foreground">
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            <span>Memuat...</span>
-                        </div>
-                    )}
-                    {results.length > 0 && (
-                        <div className="py-2">
-                        {results.map((r, i) => (
-                            <div
-                                key={r.id}
-                                className="px-4 py-3 hover:bg-muted cursor-pointer flex items-center gap-4"
-                                onClick={() => handleSelect(r)}
-                            >
-                                <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0">
-                                    <Image src={r.thumbnail} alt={r.title} fill className="object-cover" />
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="font-medium truncate">{r.title}</p>
-                                    <p className="text-sm text-muted-foreground truncate">{r.channel}</p>
-                                </div>
-                            </div>
-                        ))}
-                        </div>
-                    )}
-                 </div>
-            </div>
-        )}
-        
-        {/* Desktop Results Dropdown */}
-        <div className="hidden sm:block">
-            {showResults && (
-                <div className="absolute left-0 right-0 top-12 bg-card border rounded-lg shadow-lg max-h-96 overflow-auto z-50">
-                {loading && (
-                    <div className="p-4 flex items-center justify-center text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        <span>Memuat...</span>
-                    </div>
-                )}
-                {error && <div className="p-4 text-destructive text-center">{error}</div>}
-                {!loading && !error && results.length > 0 && (
-                    <ul>
-                        {results.map((r) => (
-                            <li key={r.id} onClick={() => handleSelect(r)}
-                                className="p-2 flex items-center gap-3 hover:bg-muted cursor-pointer">
-                            <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0">
-                                <Image src={r.thumbnail} alt={r.title} fill className="object-cover" />
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <div className="text-sm font-semibold truncate">{r.title}</div>
-                                <div className="text-xs text-muted-foreground truncate">{r.channel}</div>
-                            </div>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                {!loading && !error && results.length === 0 && q.length > 0 && (
-                    <div className="p-4 text-center text-muted-foreground">
-                        Tidak ada hasil untuk &quot;{q}&quot;
-                    </div>
-                )}
+        {showResults && (
+            <div className="absolute left-0 right-0 top-full mt-2 bg-card border rounded-lg shadow-lg max-h-96 w-full overflow-auto z-50 animate-fadeIn">
+            {loading && (
+                <div className="p-4 flex items-center justify-center text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <span>Memuat...</span>
                 </div>
             )}
-        </div>
+            {error && <div className="p-4 text-destructive text-center">{error}</div>}
+            {!loading && !error && results.length > 0 && (
+                <ul>
+                    {results.map((r) => (
+                        <li key={r.id} onClick={() => handleSelect(r)}
+                            className="p-2 flex items-center gap-3 hover:bg-muted cursor-pointer">
+                        <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0">
+                            <Image src={r.thumbnail} alt={r.title} fill className="object-cover" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <div className="text-sm font-semibold truncate">{r.title}</div>
+                            <div className="text-xs text-muted-foreground truncate">{r.channel}</div>
+                        </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {!loading && !error && results.length === 0 && q.length > 0 && (
+                <div className="p-4 text-center text-muted-foreground">
+                    Tidak ada hasil untuk &quot;{q}&quot;
+                </div>
+            )}
+            </div>
+        )}
     </div>
   );
 }
