@@ -71,9 +71,13 @@ const useDraggable = (initialPos: { x: number, y: number }) => {
 
     // Save position to localStorage
     if (typeof window !== 'undefined') {
-        localStorage.setItem('miniPlayerPosition', JSON.stringify(position));
+        // We need to read position from state as it's the most up-to-date value
+        setPosition(currentPos => {
+            localStorage.setItem('miniPlayerPosition', JSON.stringify(currentPos));
+            return currentPos;
+        });
     }
-  }, [isDragging, position]);
+  }, [isDragging]);
   
   useEffect(() => {
     document.addEventListener('mousemove', onDragMove);
@@ -115,7 +119,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
   const [currentIndex, setCurrentIdx] = useState<number>(0);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   
-  const defaultPosition = { x: window.innerWidth - 356 - 16, y: window.innerHeight - 144 - 84 };
+  const defaultPosition = { x: (typeof window !== 'undefined' ? window.innerWidth : 1000) - 356 - 16, y: (typeof window !== 'undefined' ? window.innerHeight : 800) - 144 - 84 };
   const { ref, style, onMouseDown, onTouchStart, isDragging } = useDraggable(defaultPosition);
 
   useEffect(() => {
