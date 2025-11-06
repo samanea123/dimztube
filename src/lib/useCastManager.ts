@@ -86,6 +86,37 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     }
   }, [environment, releaseWakeLock, toast]);
 
+  const handleDisplayMedia = async () => {
+    if (!('getDisplayMedia' in navigator.mediaDevices)) {
+        toast({
+            variant: 'destructive',
+            title: 'Fitur Tidak Didukung',
+            description: 'Mirroring layar tidak didukung di browser ini.'
+        });
+        return;
+    }
+    
+    try {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        setStream(displayStream);
+        
+        displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
+
+        setDeviceName('Layar yang Dibagikan');
+        acquireWakeLock();
+        return true;
+    } catch (err) {
+        console.error("Gagal memulai sesi getDisplayMedia:", err);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Memulai Sesi',
+            description: 'Anda membatalkan pilihan atau browser tidak mendukung fitur ini.'
+        });
+        stopSession(false);
+        return false;
+    }
+  };
+
   const startMiracast = useCallback(async (videoUrl: string) => {
     if (status === 'connected') {
         toast({
@@ -97,52 +128,30 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     }
 
     setStatus('connecting');
-    setMode('miracast');
 
     switch (environment) {
       case 'android':
         window.AndroidInterface?.startMiracast(videoUrl);
         setDeviceName('Perangkat Android');
-        setStatus('connected'); 
+        setStatus('connected');
+        setMode('miracast');
         break;
       case 'electron':
         window.electronAPI?.startCast(videoUrl);
         setDeviceName('Perangkat Windows');
         setStatus('connected');
+        setMode('miracast');
         break;
       default:
-        // NEW LOGIC using getDisplayMedia
-        try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({
-              video: true,
-              audio: true,
-            });
-            setStream(displayStream);
-            
-            displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
-
-            setDeviceName('Layar yang Dibagikan');
+        const success = await handleDisplayMedia();
+        if (success) {
             setStatus('connected');
-            acquireWakeLock();
+            setMode('miracast');
             toast({ title: '✅ Cast Video berhasil dimulai.' });
-
-            // Optional: display stream in a local video element for preview
-            // const videoElem = document.createElement("video");
-            // videoElem.srcObject = displayStream;
-            // videoElem.play();
-
-          } catch (err) {
-            console.error("❌ Gagal memulai Cast Video:", err);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Memulai Cast',
-                description: 'Anda membatalkan pilihan atau browser tidak mendukung fitur ini.'
-            });
-            stopSession(false);
-          }
+        }
         break;
     }
-  }, [environment, status, toast, stopSession, acquireWakeLock]);
+  }, [environment, status, toast, stopSession]);
 
   const startMirror = useCallback(async () => {
     if (status === 'connected') {
@@ -155,48 +164,30 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     }
 
     setStatus('connecting');
-    setMode('mirror');
 
     switch (environment) {
       case 'android':
         window.AndroidInterface?.startMirror();
         setDeviceName('Layar Android');
         setStatus('connected');
+        setMode('mirror');
         break;
       case 'electron':
         window.electronAPI?.startMirror();
         setDeviceName('Layar Windows');
         setStatus('connected');
+        setMode('mirror');
         break;
       default:
-        if ('getDisplayMedia' in navigator.mediaDevices) {
-          try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            setStream(displayStream);
-            
-            displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
-
-            setDeviceName('Seluruh Layar');
+        const success = await handleDisplayMedia();
+        if (success) {
             setStatus('connected');
-            acquireWakeLock();
+            setMode('mirror');
             toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
-
-          } catch (error) {
-            console.error('Gagal memulai mirror:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Memulai Mirror',
-                description: 'Anda membatalkan pilihan atau browser tidak mendukung fitur ini.'
-            });
-            stopSession(false);
-          }
-        } else {
-          toast({ variant: 'destructive', title: 'Fitur Tidak Didukung', description: 'Mirroring layar tidak didukung di browser ini.' });
-          stopSession(false);
         }
         break;
     }
-  }, [environment, status, toast, stopSession, acquireWakeLock]);
+  }, [environment, status, toast, stopSession]);
 
   useEffect(() => {
     const handleCastStateChange = (event: any) => {

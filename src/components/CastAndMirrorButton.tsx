@@ -9,15 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function CastAndMirrorButton() {
   const { toast } = useToast();
-  const { status, mode, startMiracast, startMirror, stopSession } = useCastManager({
-    onNoMiracastDevice: () => {
-      toast({
-        variant: 'destructive',
-        title: 'Tidak ada perangkat ditemukan',
-        description: 'Tidak ada perangkat Miracast yang ditemukan di jaringan Anda.',
-      });
-    },
-  });
+  const { status, mode, startMiracast, startMirror, stopSession } = useCastManager();
 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,7 +28,8 @@ export default function CastAndMirrorButton() {
 
   const handleMiracast = () => {
     setIsOpen(false);
-    const currentVideoUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`; // Dummy URL
+    // Dummy URL, as getDisplayMedia doesn't need it but the function signature might.
+    const currentVideoUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`; 
     startMiracast(currentVideoUrl);
   };
 
@@ -105,7 +98,7 @@ export default function CastAndMirrorButton() {
                         onClick={handleMiracast}
                     >
                        <MonitorSmartphone className="mr-2 h-4 w-4" />
-                        Cast Video (Miracast)
+                        Cast Video (Layar)
                     </button>
                     <button
                         className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted mt-1"
