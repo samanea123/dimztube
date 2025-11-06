@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { getQueue, getSettings, setCurrentIndex, playNext } from '@/lib/queue';
+import { VideoItem } from '@/lib/youtube';
 
 export default function PlayerPage() {
   const params = useParams();
@@ -11,23 +12,59 @@ export default function PlayerPage() {
   const playerRef = useRef<any>(null);
   const isAutoplay = searchParams.get('autoplay') === '1';
 
+  const setupMediaSession = () => {
+    if (!('mediaSession' in navigator)) {
+      return;
+    }
+    
+    const queue = getQueue();
+    const video = queue.find(v => v.id === videoId);
+
+    if (!video) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: video.title,
+      artist: video.channelTitle,
+      album: 'DimzTube',
+      artwork: [
+        { src: video.thumbnailUrl, sizes: '512x512', type: 'image/jpeg' },
+      ],
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => {
+        playerRef.current?.playVideo();
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+        playerRef.current?.pauseVideo();
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+       const queue = getQueue();
+       const currentIndex = queue.findIndex(v => v.id === videoId);
+       if (currentIndex > 0) {
+           const prevIndex = currentIndex - 1;
+           setCurrentIndex(prevIndex);
+           window.location.href = `/player/${queue[prevIndex].id}?autoplay=1`;
+       }
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+        handleVideoEnd(true); // Treat as video end to play next
+    });
+
+  };
+
   useEffect(() => {
-    // If the API is already loaded, proceed to create the player
     if (window.YT && window.YT.Player) {
       onYouTubeIframeAPIReady();
     } else {
-      // Otherwise, set up the callback for when the API loads
       window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
     }
   
-    // Add fullscreen change listeners
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
     document.addEventListener("mozfullscreenchange", handleFullscreenChange);
     document.addEventListener("MSFullscreenChange", handleFullscreenChange);
 
     return () => {
-      // Clean up player and listeners
       if (playerRef.current) {
         playerRef.current.destroy();
       }
@@ -37,7 +74,7 @@ export default function PlayerPage() {
       document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
       document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
     };
-  }, [videoId]); // Re-run effect if videoId changes
+  }, [videoId]);
 
   const handleFullscreenChange = () => {
     const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
@@ -65,8 +102,8 @@ export default function PlayerPage() {
   }
 
   async function onPlayerReady(event: any) {
+    setupMediaSession();
     if (isAutoplay) {
-      // Mute to allow autoplay in most browsers
       event.target.mute();
       event.target.playVideo();
 
@@ -86,37 +123,44 @@ export default function PlayerPage() {
   }
 
   function onPlayerStateChange(event: any) {
-    // Show unmute button when video starts playing and is muted
     if (event.data === YT.PlayerState.PLAYING && playerRef.current.isMuted()) {
         const unmuteButton = document.getElementById("unmute");
         if (unmuteButton) {
             unmuteButton.style.display = "block";
         }
     }
-    // When video ends
     if (event.data === YT.PlayerState.ENDED) {
         handleVideoEnd();
     }
+     if (event.data === YT.PlayerState.PLAYING) {
+        navigator.mediaSession.playbackState = "playing";
+    } else if (event.data === YT.PlayerState.PAUSED) {
+        navigator.mediaSession.playbackState = "paused";
+    }
   }
 
-  const handleVideoEnd = () => {
+  const handleVideoEnd = (forceNext = false) => {
     const queue = getQueue();
     const settings = getSettings();
     const currentIndex = queue.findIndex(v => v.id === videoId);
 
-    if (currentIndex === -1 || currentIndex === queue.length - 1) {
-        // If it's the last video or not in queue
-        if (settings.repeat) {
+    if (currentIndex === -1) {
+        if (!forceNext) window.close();
+        return;
+    }
+
+    if (currentIndex === queue.length - 1) {
+        if (settings.repeat || forceNext) {
             if (queue.length > 0) {
-                setCurrentIndex(0);
-                window.location.href = `/player/${queue[0].id}?autoplay=1`;
+                const nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : 0;
+                setCurrentIndex(nextIndex);
+                window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
             }
-        } else {
-            window.close(); // Close tab if not repeating
+        } else if (!forceNext) {
+            window.close();
         }
     } else {
-        // Play next video
-        const nextIndex = currentIndex + 1;
+        const nextIndex = settings.shuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
         setCurrentIndex(nextIndex);
         window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
     }
