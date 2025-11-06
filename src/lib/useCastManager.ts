@@ -142,7 +142,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
           }
         break;
     }
-  }, [environment, status, toast, stopSession]);
+  }, [environment, status, toast, stopSession, acquireWakeLock]);
 
   const startMirror = useCallback(async () => {
     if (status === 'connected') {
@@ -196,7 +196,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         }
         break;
     }
-  }, [environment, status, toast, stopSession]);
+  }, [environment, status, toast, stopSession, acquireWakeLock]);
 
   useEffect(() => {
     const handleCastStateChange = (event: any) => {
