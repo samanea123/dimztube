@@ -26,11 +26,7 @@ type CastStatus = 'disconnected' | 'connecting' | 'connected';
 type CastMode = 'none' | 'miracast' | 'mirror' | 'chromecast';
 type Environment = 'browser' | 'android' | 'electron' | 'android-tv';
 
-interface CastManagerOptions {
-    onNoMiracastDevice?: () => void;
-}
-
-export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) {
+export function useCastManager() {
   const { toast } = useToast();
   const [status, setStatus] = useState<CastStatus>('disconnected');
   const [mode, setMode] = useState<CastMode>('none');
@@ -93,7 +89,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
             title: 'Fitur Tidak Didukung',
             description: 'Mirroring layar tidak didukung di browser ini.'
         });
-        return;
+        return false;
     }
     
     try {
@@ -103,21 +99,21 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
 
         setDeviceName('Layar yang Dibagikan');
-        acquireWakeLock();
+        await acquireWakeLock();
         return true;
     } catch (err) {
         console.error("Gagal memulai sesi getDisplayMedia:", err);
         toast({
-            variant: 'destructive',
-            title: 'Gagal Memulai Sesi',
-            description: 'Anda membatalkan pilihan atau browser tidak mendukung fitur ini.'
+            variant: "destructive",
+            title: "Gagal Memulai Sesi",
+            description: "Anda membatalkan pilihan atau terjadi error."
         });
         stopSession(false);
         return false;
     }
   };
 
-  const startMiracast = useCallback(async (videoUrl: string) => {
+  const startMiracast = useCallback(async () => {
     if (status === 'connected') {
         toast({
             variant: 'destructive',
@@ -131,13 +127,13 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
 
     switch (environment) {
       case 'android':
-        window.AndroidInterface?.startMiracast(videoUrl);
+        window.AndroidInterface?.startMiracast('');
         setDeviceName('Perangkat Android');
         setStatus('connected');
         setMode('miracast');
         break;
       case 'electron':
-        window.electronAPI?.startCast(videoUrl);
+        window.electronAPI?.startCast('');
         setDeviceName('Perangkat Windows');
         setStatus('connected');
         setMode('miracast');
@@ -148,10 +144,12 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
             setStatus('connected');
             setMode('miracast');
             toast({ title: '✅ Cast Video berhasil dimulai.' });
+        } else {
+            setStatus('disconnected');
         }
         break;
     }
-  }, [environment, status, toast, stopSession]);
+  }, [environment, status, toast]);
 
   const startMirror = useCallback(async () => {
     if (status === 'connected') {
@@ -160,7 +158,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
             title: 'Sesi Aktif',
             description: 'Matikan sesi Mirror atau Cast yang sedang berjalan terlebih dahulu.',
         });
-        return;
+        return false;
     }
 
     setStatus('connecting');
@@ -171,23 +169,64 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         setDeviceName('Layar Android');
         setStatus('connected');
         setMode('mirror');
-        break;
+        return true;
       case 'electron':
         window.electronAPI?.startMirror();
         setDeviceName('Layar Windows');
         setStatus('connected');
         setMode('mirror');
-        break;
+        return true;
       default:
         const success = await handleDisplayMedia();
         if (success) {
             setStatus('connected');
             setMode('mirror');
             toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
+        } else {
+            setStatus('disconnected');
         }
-        break;
+        return success;
     }
-  }, [environment, status, toast, stopSession]);
+  }, [environment, status, toast]);
+
+  const startAutoCast = async () => {
+    const { id: toastId, update } = toast({
+      title: "🔍 Mendeteksi TV terdekat...",
+    });
+  
+    try {
+      // Simulate device discovery
+      const fakeDiscovery = await new Promise((resolve) => {
+        setTimeout(() => resolve("Android TV Living Room"), 2000);
+      });
+  
+      update({
+        id: toastId,
+        title: `📺 ${fakeDiscovery} ditemukan!`,
+        description: "Mencoba menghubungkan...",
+      });
+  
+      // Proceed with mirroring
+      const success = await startMirror();
+  
+      // If startMirror fails (e.g., user cancels), the toast inside startMirror will handle it.
+      // If it succeeds, the CastStatusIndicator will show the final status.
+      if (success) {
+         setTimeout(() => update({ id: toastId, open: false }), 1000); // Hide discovery toast
+      }
+      
+    } catch (err) {
+      console.error("❌ Gagal auto-cast:", err);
+      update({
+        id: toastId,
+        variant: "destructive",
+        title: "❌ Gagal menemukan perangkat TV",
+        description: "Mirror manual akan dijalankan.",
+      });
+      setTimeout(() => startMirror(), 2000);
+    }
+  };
+
 
   useEffect(() => {
     const handleCastStateChange = (event: any) => {
@@ -244,7 +283,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         }
     }
 
-  }, [stopSession, acquireWakeLock]);
+  }, [stopSession]);
 
-  return { status, mode, deviceName, startMiracast, startMirror, stopSession };
+  return { status, mode, deviceName, startMiracast, startMirror, stopSession, startAutoCast };
 }

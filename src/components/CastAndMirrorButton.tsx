@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function CastAndMirrorButton() {
   const { toast } = useToast();
-  const { status, mode, startMiracast, startMirror, stopSession } = useCastManager();
+  const { status, mode, startMiracast, startMirror, stopSession, startAutoCast } = useCastManager();
 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,14 +28,12 @@ export default function CastAndMirrorButton() {
 
   const handleMiracast = () => {
     setIsOpen(false);
-    // Dummy URL, as getDisplayMedia doesn't need it but the function signature might.
-    const currentVideoUrl = `https://www.youtube.com/watch?v=dQw4w9WgXcQ`; 
-    startMiracast(currentVideoUrl);
+    startMiracast();
   };
 
   const handleMirror = () => {
     setIsOpen(false);
-    startMirror();
+    startAutoCast(); // Use auto cast flow
   };
   
   const handleToggle = () => {
