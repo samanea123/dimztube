@@ -36,7 +36,10 @@ const useDraggable = (initialPos: { x: number, y: number }) => {
 
   const onDragMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!isDragging) return;
-    e.preventDefault();
+    // Prevent default scrolling behavior on touch devices
+    if ('touches' in e) {
+        e.preventDefault();
+    }
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches'in e ? e.touches[0].clientY : e.clientY;
@@ -75,7 +78,7 @@ const useDraggable = (initialPos: { x: number, y: number }) => {
   useEffect(() => {
     document.addEventListener('mousemove', onDragMove);
     document.addEventListener('mouseup', onDragEnd);
-    document.addEventListener('touchmove', onDragMove);
+    document.addEventListener('touchmove', onDragMove, { passive: false });
     document.addEventListener('touchend', onDragEnd);
 
     return () => {
@@ -104,7 +107,7 @@ const useDraggable = (initialPos: { x: number, y: number }) => {
     }
   }, []);
 
-  return { ref: elementRef, style: { transform: `translate(${position.x}px, ${position.y}px)` }, onMouseDown: onDragStart, onTouchStart: onDragStart, isDragging };
+  return { ref: elementRef, style: { transform: `translate(${position.x}px, ${position.y}px)`, position: 'fixed', top: 0, left: 0 }, onMouseDown: onDragStart, onTouchStart: onDragStart, isDragging };
 };
 
 export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => void }) {
@@ -112,8 +115,8 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
   const [currentIndex, setCurrentIdx] = useState<number>(0);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   
-  const { ref, style, onMouseDown, onTouchStart, isDragging } = useDraggable({ x: window.innerWidth - 356, y: window.innerHeight - 200 });
-  const clickTimeout = useRef<number | null>(null);
+  const defaultPosition = { x: window.innerWidth - 356 - 16, y: window.innerHeight - 144 - 84 };
+  const { ref, style, onMouseDown, onTouchStart, isDragging } = useDraggable(defaultPosition);
 
   useEffect(() => {
     const updateState = () => {
@@ -177,7 +180,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
         onTouchStart={onTouchStart}
         onClick={handleClick}
         className={cn(
-        "fixed top-0 left-0 bg-card/95 border rounded-xl shadow-lg p-3 flex gap-3 items-center w-[340px] z-40 backdrop-blur-sm animate-in fade-in-0 slide-in-from-bottom-4 duration-300",
+        "bg-card/95 border rounded-xl shadow-lg p-3 flex gap-3 items-center w-[340px] z-40 backdrop-blur-sm animate-in fade-in-0 slide-in-from-bottom-4 duration-300",
         isDragging ? 'cursor-grabbing' : 'cursor-grab',
         isQueueOpen && "hidden"
     )}>
