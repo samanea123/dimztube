@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { getQueue, playNext, playPrev, setCurrentIndex, getCurrentIndex } from "@/lib/queue";
+import { getQueue, playNext, playPrev, setCurrentIndex, getCurrentIndex, setQueue } from "@/lib/queue";
 import type { VideoItem } from "@/lib/youtube";
 import { Button } from "./ui/button";
 import { Maximize, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => void }) {
-  const [queue, setQueue] = useState<VideoItem[]>([]);
+  const [queue, setLocalQueue] = useState<VideoItem[]>([]);
   const [currentIndex, setCurrentIdx] = useState<number>(0);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   
@@ -17,7 +17,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
     const updateState = () => {
       const currentQueue = getQueue();
       const currentIdx = getCurrentIndex();
-      setQueue(currentQueue);
+      setLocalQueue(currentQueue);
       setCurrentIdx(currentIdx);
 
       // Check if queue sidebar is open by checking for its data attribute
@@ -61,9 +61,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
   
   const handleClose = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setQueue([]); // Visually hide it immediately
-      // A full clear isn't ideal as it loses the whole queue, this needs a better "hide" state
-      // For now, let's just make it disappear from this view. The queue state remains.
+      setQueue([]); // Clear the queue which will hide the player
   }
 
   const currentVideo = queue[currentIndex];
