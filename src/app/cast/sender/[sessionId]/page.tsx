@@ -139,7 +139,9 @@ export default function SenderPage() {
   
   useEffect(() => {
     // Automatically start casting when component mounts
-    startCasting();
+    if(firestoreInitialized && sessionId) {
+        startCasting();
+    }
   }, [firestoreInitialized, sessionId]);
 
 
