@@ -14,6 +14,7 @@ import MiniPlayer from '@/components/MiniPlayer';
 import type { VideoItem as SearchVideoItem } from '@/components/SearchBar';
 
 const KEY_USAGE_STORAGE_KEY = 'yt_keys_usage';
+const TOTAL_API_KEYS = 5; // Define total keys available
 
 interface KeyUsage {
     id: number;
@@ -36,42 +37,64 @@ function HomePageContent() {
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const { toast } = useToast();
   
-  const updateKeyUsage = (apiKeyIndex: number, cost: number, totalKeys: number) => {
+  const updateKeyUsage = (apiKeyIndex: number, cost: number) => {
     if (typeof window === 'undefined' || apiKeyIndex === -1) return;
 
     let keys: KeyUsage[];
     try {
         const storedUsage = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
-        // Ensure the stored data is an array
         if (Array.isArray(storedUsage)) {
             keys = storedUsage;
         } else {
             keys = [];
         }
     } catch (e) {
-        keys = []; // Start fresh if storage is corrupted
+        keys = [];
     }
-
-    // Initialize or fix the keys array if it's empty or doesn't match the total number of keys
-    if (keys.length !== totalKeys) {
-        keys = Array.from({ length: totalKeys }, (_, i) => {
+    
+    if (keys.length !== TOTAL_API_KEYS) {
+        const newKeys = Array.from({ length: TOTAL_API_KEYS }, (_, i) => {
             const existingKey = keys.find(k => k.id === i);
             return existingKey || { id: i, used: 0 };
         });
+        keys = newKeys;
     }
 
     const keyToUpdate = keys.find(k => k.id === apiKeyIndex);
     if (keyToUpdate) {
         keyToUpdate.used += cost;
     } 
-    // This part is redundant if the array is already initialized correctly, but good as a safeguard.
-    else if (apiKeyIndex >= 0 && apiKeyIndex < totalKeys) {
-        keys[apiKeyIndex] = { id: apiKeyIndex, used: cost };
-    }
     
     localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(keys));
     window.dispatchEvent(new Event('storage'));
   };
+
+  const initializeKeyUsage = (totalKeys: number) => {
+    if (typeof window === 'undefined') return;
+
+    try {
+        let keys: KeyUsage[] = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
+
+        if (!Array.isArray(keys) || keys.some(k => typeof k.id !== 'number' || typeof k.used !== 'number')) {
+            keys = []; // Reset if format is incorrect
+        }
+
+        if (keys.length !== totalKeys) {
+            const newKeys = Array.from({ length: totalKeys }, (_, i) => {
+                const existingKey = keys.find(k => k.id === i);
+                return existingKey || { id: i, used: 0 };
+            });
+            localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(newKeys));
+            window.dispatchEvent(new Event('storage'));
+        }
+    } catch (e) {
+        // If parsing fails, initialize with a fresh array
+        const freshKeys = Array.from({ length: totalKeys }, (_, i) => ({ id: i, used: 0 }));
+        localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(freshKeys));
+        window.dispatchEvent(new Event('storage'));
+        console.warn("Initialized API key usage due to corrupted storage data.");
+    }
+  }
 
   const fetchAndSetVideos = async (category: string, searchQuery: string | null, forceRefresh = false, pageToken: string | null = null) => {
     if (pageToken) {
@@ -79,16 +102,18 @@ function HomePageContent() {
     } else {
         setLoading(true);
     }
-    const cacheKey = searchQuery ? `search_${searchQuery}_${category}` : `videos_${category}`;
+    const cacheKey = searchQuery ? `search_${searchQuery}_${category}_${pageToken || 'first'}` : `videos_${category}`;
     
-    if (!forceRefresh && !pageToken) {
+    if (!forceRefresh) {
       try {
         const cachedData = sessionStorage.getItem(cacheKey);
         if (cachedData) {
           const { cachedVideos, cachedToken } = JSON.parse(cachedData);
-          setVideos(cachedVideos);
+          const currentVideos = pageToken ? videos : [];
+          setVideos([...currentVideos, ...cachedVideos]);
           setNextPageToken(cachedToken);
           setLoading(false);
+          setLoadingMore(false);
           return;
         }
       } catch (e) {
@@ -101,7 +126,6 @@ function HomePageContent() {
       let newNextPageToken: string | null = null;
       let apiKeyIndex = -1;
       let cost = 0;
-      let totalApiKeys = 0;
 
       if (searchQuery) {
         let url = `/api/search?q=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`;
@@ -114,25 +138,26 @@ function HomePageContent() {
         
         if (!res.ok || searchData.error) {
             toast({ variant: "destructive", title: "Error Pencarian", description: searchData.error || "Gagal memuat hasil." });
-            setVideos(pageToken ? videos : []); // Keep existing videos on load more error, else clear
+            setVideos(pageToken ? videos : []); 
+            setNextPageToken(null);
             setLoading(false);
             setLoadingMore(false);
             return;
-        } else {
-           data = (searchData.items || []).map((item: any) => ({
-             id: item.id,
-             title: item.title,
-             thumbnailUrl: item.thumbnail,
-             channelTitle: item.channel,
-             viewCount: '',
-             publishedAt: '',
-             duration: ''
-          }));
-          newNextPageToken = searchData.nextPageToken || null;
-        }
+        } 
+        
+        data = (searchData.items || []).map((item: any) => ({
+         id: item.id,
+         title: item.title,
+         thumbnailUrl: item.thumbnail,
+         channelTitle: item.channel,
+         viewCount: '',
+         publishedAt: '',
+         duration: ''
+        }));
+        newNextPageToken = searchData.nextPageToken || null;
+      
       } else {
         let response: VideoApiResponse | null = null;
-        // Load more for categories is not implemented, but can be added here
         if (category === 'Semua') {
           response = await getPopularVideos();
         } else {
@@ -143,9 +168,10 @@ function HomePageContent() {
           data = response.videos;
           apiKeyIndex = response.apiKeyIndex;
           cost = response.cost;
-          totalApiKeys = response.totalApiKeys;
-          // Note: getPopularVideos/getVideosByCategory don't support pagination in this example
-          newNextPageToken = null;
+          newNextPageToken = response.nextPageToken || null;
+           if (apiKeyIndex !== -1) {
+            updateKeyUsage(apiKeyIndex, cost);
+          }
         }
       }
       
@@ -153,21 +179,19 @@ function HomePageContent() {
       setVideos(newVideos);
       setNextPageToken(newNextPageToken);
 
-      if (newVideos.length > 0 && !pageToken) { // Only cache the first page
+      if (newVideos.length > 0) {
         try {
-          const cachePayload = { cachedVideos: newVideos, cachedToken: newNextPageToken };
+          const cachePayload = { cachedVideos: data, cachedToken: newNextPageToken };
           sessionStorage.setItem(cacheKey, JSON.stringify(cachePayload));
         } catch (e) {
             console.warn("Failed to write to sessionStorage", e);
         }
       }
-      if (apiKeyIndex !== -1) {
-        updateKeyUsage(apiKeyIndex, cost, totalApiKeys);
-      }
+      
     } catch(err) {
       console.error("Gagal mengambil data video:", err);
       toast({ variant: "destructive", title: "Gagal Memuat Video", description: "Terjadi masalah saat mengambil data. Coba muat ulang halaman." });
-      setVideos(pageToken ? videos : []); // Keep existing videos on error, else clear
+      setVideos(pageToken ? videos : []);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -175,13 +199,15 @@ function HomePageContent() {
   };
   
   useEffect(() => {
+    // This is the key fix: Initialize key usage tracker on every component load.
+    initializeKeyUsage(TOTAL_API_KEYS);
+    
     window['__onGCastApiAvailable'] = (isAvailable: boolean) => {
       if (isAvailable) {
         initializeCastApi();
       }
     };
-     // if there is a search query 'q', we ignore the selected category from the bar
-     // and pass the query to our fetch function.
+    
     fetchAndSetVideos(q ? 'Semua' : selectedCategory, q);
   }, [selectedCategory, q]);
 
@@ -191,12 +217,13 @@ function HomePageContent() {
         sessionStorage.removeItem(key);
       }
     });
-    fetchAndSetVideos(selectedCategory, q, true);
+    fetchAndSetVideos(q ? 'Semua' : selectedCategory, q, true);
   };
   
   const handleSelectCategory = (category: string) => {
-    // When a category is selected, clear any search query
-    window.history.pushState({}, '', '/');
+    if (q) {
+        window.history.pushState({}, '', '/');
+    }
     setSelectedCategory(category);
   };
 
@@ -208,11 +235,13 @@ function HomePageContent() {
 
   const initializeCastApi = () => {
     try {
-        const context = cast.framework.CastContext.getInstance();
-        context.setOptions({
-            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-        });
+        if (window.cast && window.cast.framework) {
+            const context = cast.framework.CastContext.getInstance();
+            context.setOptions({
+                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+            });
+        }
     } catch(error) {
         console.error('Gagal inisialisasi Google Cast API:', error);
     }
@@ -259,7 +288,6 @@ function HomePageContent() {
   };
   
   const handleSelectVideoFromSearch = (video: SearchVideoItem) => {
-    // This now navigates to the home page with a search query
      const term = video.title;
      window.location.href = `/?q=${encodeURIComponent(term)}`;
   }
@@ -270,8 +298,10 @@ function HomePageContent() {
           onReload={handleReload} 
           onCast={() => {
              try {
-                const context = cast.framework.CastContext.getInstance();
-                context.requestSession().catch((err: any) => console.error(err));
+                if (window.cast && window.cast.framework) {
+                    const context = cast.framework.CastContext.getInstance();
+                    context.requestSession().catch((err: any) => console.error(err));
+                }
              } catch(e) { console.error(e) }
           }}
           category={selectedCategory}
@@ -309,10 +339,12 @@ function HomePageContent() {
 // Wrapper component to provide Suspense context for useSearchParams
 function HomePageWrapper() {
   return (
-    <React.Suspense fallback={<div>Loading...</div>}>
+    <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Memuat...</div>}>
       <HomePageContent />
     </React.Suspense>
   );
 }
 
 export default HomePageWrapper;
+
+    

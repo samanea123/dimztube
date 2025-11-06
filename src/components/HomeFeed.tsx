@@ -40,14 +40,24 @@ export default function HomeFeed({ videos, loading, onPlayVideo, onAddToQueue, o
     return <VideoGridSkeleton />;
   }
 
-  const videoList = videos || [];
+  // Safeguard: Ensure videos is always an array to prevent .map errors
+  const videoList = Array.isArray(videos) ? videos : [];
+  
+  if (videoList.length === 0 && !loading) {
+    return (
+        <div className="text-center py-16 text-muted-foreground">
+            <p>Tidak ada video untuk ditampilkan.</p>
+            <p className='text-sm'>Coba segarkan halaman atau pilih kategori lain.</p>
+        </div>
+    )
+  }
 
   return (
     <>
       <div className="grid grid-cols-1 gap-x-4 gap-y-8 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {videoList.map((video) => (
+        {videoList.map((video, index) => (
           <VideoCard 
-            key={video.id} 
+            key={`${video.id}-${index}`}
             video={video} 
             onPlay={() => onPlayVideo(video)} 
             onAddToQueue={() => onAddToQueue(video)}
@@ -71,3 +81,5 @@ export default function HomeFeed({ videos, loading, onPlayVideo, onAddToQueue, o
     </>
   );
 }
+
+    
