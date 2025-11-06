@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { getQueue, getSettings, setCurrentIndex, playNext } from '@/lib/queue';
-import { VideoItem } from '@/lib/youtube';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PlayerPage() {
   const params = useParams();
@@ -11,6 +11,42 @@ export default function PlayerPage() {
   const videoId = params.id as string;
   const playerRef = useRef<any>(null);
   const isAutoplay = searchParams.get('autoplay') === '1';
+  const { toast } = useToast();
+  const wasPlayingBeforeHidden = useRef(false);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const player = playerRef.current;
+      if (!player) return;
+
+      const playerState = player.getPlayerState();
+      
+      if (document.hidden) {
+        if (playerState === YT.PlayerState.PLAYING) {
+            wasPlayingBeforeHidden.current = true;
+            toast({
+                title: '🎧 Pemutaran tetap aktif di background',
+                description: 'Audio akan terus berjalan saat layar mati atau aplikasi diminimize.',
+            });
+        }
+      } else {
+        if (wasPlayingBeforeHidden.current) {
+            toast({
+                title: '▶️ Lanjutkan dari background',
+                description: 'Selamat menikmati kembali videonya!',
+            });
+            wasPlayingBeforeHidden.current = false;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [toast]);
+
 
   const setupMediaSession = () => {
     if (!('mediaSession' in navigator)) {
