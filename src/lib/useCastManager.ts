@@ -31,13 +31,13 @@ interface CastManagerOptions {
 }
 
 export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) {
+  const { toast } = useToast();
   const [status, setStatus] = useState<CastStatus>('disconnected');
   const [mode, setMode] = useState<CastMode>('none');
   const [environment, setEnvironment] = useState<Environment>('browser');
   const [wakeLock, setWakeLock] = useState<any | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [deviceName, setDeviceName] = useState<string>('');
-  const { toast } = useToast();
 
   useEffect(() => {
     const ua = navigator.userAgent;
@@ -87,7 +87,14 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   }, [environment, releaseWakeLock, toast]);
 
   const startMiracast = useCallback(async (videoUrl: string) => {
-    if (status === 'connected') return;
+    if (status === 'connected') {
+        toast({
+            variant: 'destructive',
+            title: 'Sesi Aktif',
+            description: 'Matikan sesi Mirror atau Cast yang sedang berjalan terlebih dahulu.',
+        });
+        return;
+    }
 
     setStatus('connecting');
     setMode('miracast');
@@ -126,7 +133,11 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
 
           } catch (err) {
             console.error("❌ Gagal memulai Cast Video:", err);
-            toast({ variant: 'destructive', title: 'Gagal Memulai Cast', description: 'Pastikan browser mendukung fitur screen capture.' });
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Memulai Cast',
+                description: 'Anda membatalkan pilihan atau browser tidak mendukung fitur ini.'
+            });
             stopSession(false);
           }
         break;
@@ -134,7 +145,14 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   }, [environment, status, toast, stopSession]);
 
   const startMirror = useCallback(async () => {
-    if (status === 'connected') return;
+    if (status === 'connected') {
+       toast({
+            variant: 'destructive',
+            title: 'Sesi Aktif',
+            description: 'Matikan sesi Mirror atau Cast yang sedang berjalan terlebih dahulu.',
+        });
+        return;
+    }
 
     setStatus('connecting');
     setMode('mirror');
@@ -165,6 +183,11 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
 
           } catch (error) {
             console.error('Gagal memulai mirror:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Memulai Mirror',
+                description: 'Anda membatalkan pilihan atau browser tidak mendukung fitur ini.'
+            });
             stopSession(false);
           }
         } else {
@@ -178,7 +201,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   useEffect(() => {
     const handleCastStateChange = (event: any) => {
       const state = event.sessionState;
-      const session = window.cast.framework.CastContext.getInstance().getCurrentSession();
+      const session = window.cast?.framework?.CastContext.getInstance().getCurrentSession();
 
       if (state === 'SESSION_STARTED' || state === 'SESSION_RESUMED') {
         setStatus('connected');
@@ -190,19 +213,34 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
       }
     };
     
-    window['__onGCastApiAvailable'] = (isAvailable) => {
-        if(isAvailable) {
-            const castContext = window.cast.framework.CastContext.getInstance();
-            castContext.setOptions({
-                receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-                autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-            });
-            castContext.addEventListener(
-              window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-              handleCastStateChange
-            );
-        }
-    };
+    // Check if the Cast SDK is already available
+    if (window.cast && window.cast.framework) {
+        const castContext = window.cast.framework.CastContext.getInstance();
+        castContext.setOptions({
+            receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+        });
+        castContext.addEventListener(
+            window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+            handleCastStateChange
+        );
+    } else {
+        // Otherwise, wait for the API to become available
+        window['__onGCastApiAvailable'] = (isAvailable) => {
+            if(isAvailable) {
+                const castContext = window.cast.framework.CastContext.getInstance();
+                castContext.setOptions({
+                    receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                    autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+                });
+                castContext.addEventListener(
+                  window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+                  handleCastStateChange
+                );
+            }
+        };
+    }
+
 
     // Clean up on unmount
     return () => {
@@ -215,7 +253,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         }
     }
 
-  }, [stopSession]);
+  }, [stopSession, acquireWakeLock]);
 
   return { status, mode, deviceName, startMiracast, startMirror, stopSession };
 }
