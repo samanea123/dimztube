@@ -25,42 +25,63 @@ export default function SenderPage() {
   const firestore = useFirestore();
 
   const stopCasting = async (notify = true) => {
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
+    console.log("Sender: Stop casting pressed.");
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
+    setStatus('disconnected');
+    
     if (sessionId) {
+      // Notify receiver that session is over
       await updateSession(sessionId, { status: 'disconnected' });
     }
-    setStatus('disconnected');
+
     if (notify) {
       toast({ title: '✅ Sesi Cast Dihentikan' });
+      // Close window after a short delay
       setTimeout(() => window.close(), 1500);
     }
   };
 
-  const startCasting = async () => {
-    if (!firestore || !sessionId || status === 'requesting' || status === 'streaming') return;
-    setStatus('requesting');
+  useEffect(() => {
+    if (!firestore || !sessionId) return;
+  
+    const startCasting = async () => {
+      if (status === 'requesting' || status === 'streaming') return;
+      
+      setStatus('requesting');
+      let localStream: MediaStream;
 
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      streamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+      try {
+        localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        streamRef.current = localStream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+        }
+      } catch (err) {
+        console.error('Gagal memulai getDisplayMedia:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Gagal Memulai Cast',
+          description: 'Anda mungkin telah membatalkan permintaan atau browser tidak mendukung fitur ini.',
+        });
+        setStatus('failed');
+        await updateSession(sessionId, { status: 'failed' });
+        return;
       }
       
       const pc = new RTCPeerConnection(servers);
       pcRef.current = pc;
       
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
       pc.onicecandidate = event => {
         if (event.candidate) {
@@ -70,24 +91,25 @@ export default function SenderPage() {
 
       pc.onconnectionstatechange = () => {
           if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-              if (status !== 'disconnected') { // Avoid multiple toasts
+              if (status !== 'disconnected') { // Avoid multiple toasts/actions
                 stopCasting(true);
               }
           }
           if (pc.connectionState === 'connected') {
               setStatus('streaming');
+              toast({ title: "✅ Terhubung", description: "Layar Anda berhasil di-cast."});
           }
       };
 
-      stream.getVideoTracks()[0].addEventListener('ended', () => stopCasting(false));
+      localStream.getVideoTracks()[0].addEventListener('ended', () => stopCasting(true));
       
-      onIceCandidate(sessionId, 'receiver', (candidate) => {
+      const unsubscribeIce = onIceCandidate(sessionId, 'receiver', (candidate) => {
         if (pc.remoteDescription) {
-          pc.addIceCandidate(new RTCIceCandidate(candidate));
+          pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Error adding ICE candidate:", e));
         }
       });
       
-      onSessionUpdate(sessionId, async (session) => {
+      const unsubscribeSession = onSessionUpdate(sessionId, async (session) => {
         if (session?.answer && pc.signalingState !== 'stable') {
            try {
             await pc.setRemoteDescription(new RTCSessionDescription(session.answer));
@@ -98,32 +120,30 @@ export default function SenderPage() {
         }
       });
       
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await updateSession(sessionId, { offer, status: 'connecting' });
-      
-    } catch (err) {
-      console.error('Gagal memulai sesi cast:', err);
-      toast({
-        variant: 'destructive',
-        title: 'Gagal Memulai Cast',
-        description: 'Anda mungkin telah membatalkan permintaan atau browser tidak mendukung fitur ini.',
-      });
-      setStatus('failed');
-      await updateSession(sessionId, { status: 'disconnected' });
-    }
-  };
-  
-  useEffect(() => {
-    if(firestore && sessionId && status === 'waiting') {
-        startCasting();
-    }
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await updateSession(sessionId, { offer, status: 'connecting' });
+      } catch (error) {
+         console.error("Failed to create offer:", error);
+         setStatus('failed');
+      }
+
+      // Main cleanup function
+      return () => {
+        unsubscribeIce();
+        unsubscribeSession();
+        if (pcRef.current) {
+          stopCasting(false);
+        }
+      }
+    };
+    
+    const cleanupPromise = startCasting();
     
     // Cleanup on unmount
     return () => {
-      if (pcRef.current) {
-        stopCasting(false);
-      }
+      cleanupPromise.then(cleanup => cleanup && cleanup());
     }
   }, [firestore, sessionId]);
 
@@ -180,8 +200,10 @@ export default function SenderPage() {
 
             {status === 'streaming' || status === 'requesting' ? (
                 <Button size="lg" variant="destructive" onClick={() => stopCasting(true)}>Hentikan Cast</Button>
+            ) : status === 'waiting' ? (
+                 <Button size="lg" disabled> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menunggu...</Button>
             ) : (
-                 <Button size="lg" onClick={startCasting}>Mulai Cast</Button>
+                <Button size="lg" onClick={() => window.location.reload()}>Coba Lagi</Button>
             )}
             
             <video ref={localVideoRef} autoPlay muted playsInline className="mt-6 w-full rounded-lg border bg-black aspect-video" />

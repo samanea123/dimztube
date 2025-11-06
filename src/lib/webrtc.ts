@@ -42,7 +42,7 @@ export interface WebRTCSession {
     id?: string;
     offer?: RTCSessionDescriptionInit;
     answer?: RTCSessionDescriptionInit;
-    status?: 'waiting' | 'connecting' | 'connected' | 'disconnected';
+    status?: 'waiting' | 'connecting' | 'connected' | 'disconnected' | 'failed';
     createdAt?: number;
 }
 
