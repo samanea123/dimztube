@@ -38,6 +38,35 @@ function HomePageContent() {
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const { toast } = useToast();
   
+  const initializeKeyUsage = (totalKeys: number) => {
+    if (typeof window === 'undefined') return;
+
+    try {
+        let keys: KeyUsage[] = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
+
+        if (!Array.isArray(keys) || keys.some(k => typeof k.id !== 'number' || typeof k.used !== 'number')) {
+            keys = []; // Reset if format is incorrect
+        }
+        
+        const isLengthMismatch = keys.length !== totalKeys;
+        const hasInvalidData = keys.some(k => typeof k.id === 'undefined' || typeof k.used === 'undefined');
+
+        if (isLengthMismatch || hasInvalidData) {
+             const newKeys = Array.from({ length: totalKeys }, (_, i) => {
+                const existingKey = Array.isArray(keys) ? keys.find(k => k.id === i) : undefined;
+                return existingKey && typeof existingKey.used === 'number' ? existingKey : { id: i, used: 0 };
+            });
+            localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(newKeys));
+            window.dispatchEvent(new Event('storage'));
+        }
+    } catch (e) {
+        const freshKeys = Array.from({ length: totalKeys }, (_, i) => ({ id: i, used: 0 }));
+        localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(freshKeys));
+        window.dispatchEvent(new Event('storage'));
+        console.warn("Initialized API key usage due to corrupted storage data.");
+    }
+  }
+
   const updateKeyUsage = (apiKeyIndex: number, cost: number) => {
     if (typeof window === 'undefined' || apiKeyIndex === -1) return;
 
@@ -54,11 +83,12 @@ function HomePageContent() {
     }
     
     if (keys.length !== TOTAL_API_KEYS) {
-        const newKeys = Array.from({ length: TOTAL_API_KEYS }, (_, i) => {
-            const existingKey = keys.find(k => k.id === i);
-            return existingKey || { id: i, used: 0 };
-        });
-        keys = newKeys;
+        initializeKeyUsage(TOTAL_API_KEYS);
+        try {
+            keys = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
+        } catch(e) {
+            keys = Array.from({ length: TOTAL_API_KEYS }, (_, i) => ({ id: i, used: 0 }));
+        }
     }
 
     const keyToUpdate = keys.find(k => k.id === apiKeyIndex);
@@ -70,32 +100,6 @@ function HomePageContent() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const initializeKeyUsage = (totalKeys: number) => {
-    if (typeof window === 'undefined') return;
-
-    try {
-        let keys: KeyUsage[] = JSON.parse(localStorage.getItem(KEY_USAGE_STORAGE_KEY) || '[]');
-
-        if (!Array.isArray(keys) || keys.some(k => typeof k.id !== 'number' || typeof k.used !== 'number')) {
-            keys = []; // Reset if format is incorrect
-        }
-
-        if (keys.length !== totalKeys) {
-            const newKeys = Array.from({ length: totalKeys }, (_, i) => {
-                const existingKey = keys.find(k => k.id === i);
-                return existingKey || { id: i, used: 0 };
-            });
-            localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(newKeys));
-            window.dispatchEvent(new Event('storage'));
-        }
-    } catch (e) {
-        // If parsing fails, initialize with a fresh array
-        const freshKeys = Array.from({ length: totalKeys }, (_, i) => ({ id: i, used: 0 }));
-        localStorage.setItem(KEY_USAGE_STORAGE_KEY, JSON.stringify(freshKeys));
-        window.dispatchEvent(new Event('storage'));
-        console.warn("Initialized API key usage due to corrupted storage data.");
-    }
-  }
 
   const fetchAndSetVideos = async (category: string, searchQuery: string | null, forceRefresh = false, pageToken: string | null = null) => {
     if (pageToken) {

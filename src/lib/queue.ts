@@ -31,7 +31,12 @@ export function addToQueue(video: VideoItem) {
 
 export function getQueue(): VideoItem[] {
   if (typeof window === 'undefined') return [];
-  return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  try {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+    return Array.isArray(queue) ? queue : [];
+  } catch {
+    return [];
+  }
 }
 
 export function removeFromQueue(index: number) {
@@ -39,11 +44,20 @@ export function removeFromQueue(index: number) {
   const queue = getQueue();
   queue.splice(index, 1);
   setQueue(queue);
+  
+  // Adjust current index if necessary
+  const currentIndex = getCurrentIndex();
+  if (index < currentIndex) {
+      setCurrentIndex(currentIndex - 1);
+  } else if (index === currentIndex && index >= queue.length) {
+      setCurrentIndex(Math.max(0, queue.length - 1));
+  }
 }
 
 export function clearQueue() {
   if (typeof window === 'undefined') return;
   setQueue([]);
+  setCurrentIndex(0);
 }
 
 
@@ -51,25 +65,33 @@ export function clearQueue() {
 export function setCurrentIndex(index: number) {
     if (typeof window === 'undefined') return;
     localStorage.setItem(CURRENT_INDEX_KEY, JSON.stringify(index));
-    dispatchQueueUpdate(); // Notify miniplayer of index change
+    dispatchQueueUpdate();
 }
 
 export function getCurrentIndex(): number {
     if (typeof window === 'undefined') return 0;
-    return JSON.parse(localStorage.getItem(CURRENT_INDEX_KEY) || "0");
+    try {
+      return JSON.parse(localStorage.getItem(CURRENT_INDEX_KEY) || "0");
+    } catch {
+      return 0;
+    }
 }
 
-export function playNext() {
+export function playNext(): number {
     const queue = getQueue();
+    if(queue.length === 0) return -1;
     const currentIndex = getCurrentIndex();
     const newIndex = Math.min(queue.length - 1, currentIndex + 1);
     setCurrentIndex(newIndex);
+    return newIndex;
 }
 
-export function playPrev() {
+export function playPrev(): number {
+    if(getQueue().length === 0) return -1;
     const currentIndex = getCurrentIndex();
     const newIndex = Math.max(0, currentIndex - 1);
     setCurrentIndex(newIndex);
+    return newIndex;
 }
 
 
@@ -92,5 +114,9 @@ export function toggleRepeat() {
 
 export function getSettings() {
   if (typeof window === 'undefined') return { shuffle: false, repeat: false };
-  return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"shuffle":false, "repeat":false}');
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"shuffle":false, "repeat":false}');
+  } catch {
+    return { shuffle: false, repeat: false };
+  }
 }
