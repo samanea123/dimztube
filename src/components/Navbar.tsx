@@ -1,27 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { Search, RefreshCcw, Cast, Bell } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { RefreshCcw, Bell } from "lucide-react";
 import Link from "next/link";
 import Logo from "./logo";
-import MirrorButton from "./MirrorButton";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import type { VideoItem as SearchVideoItem } from "./SearchBar";
 import SearchBar from "./SearchBar";
 import { Button } from "./ui/button";
+import CastAndMirrorButton from "./CastAndMirrorButton";
 
 const CUSTOM_AVATAR_KEY = 'dimztubeCustomAvatar';
 
 interface NavbarProps {
   onReload: () => void;
-  onCast: () => void;
   category?: string;
   onSelectVideo?: (video: SearchVideoItem) => void;
 }
 
-export default function Navbar({ onReload, onCast, category, onSelectVideo }: NavbarProps) {
+export default function Navbar({ onReload, category, onSelectVideo }: NavbarProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const defaultAvatar = PlaceHolderImages.find(img => img.id === 'avatar1')?.imageUrl;
 
@@ -67,19 +66,8 @@ export default function Navbar({ onReload, onCast, category, onSelectVideo }: Na
         >
           <RefreshCcw className="h-5 w-5" />
         </Button>
-
-        <Button
-            variant="ghost"
-            size="icon"
-            onClick={onCast}
-            className="hover:text-primary"
-            aria-label="Cast to device"
-            title="Cast ke perangkat"
-        >
-            <Cast className="h-5 w-5" />
-        </Button>
         
-        <MirrorButton />
+        <CastAndMirrorButton />
         
         <Button variant="ghost" size="icon" className="hidden sm:flex">
           <Bell className="h-5 w-5" />

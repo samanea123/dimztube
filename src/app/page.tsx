@@ -102,7 +102,7 @@ function HomePageContent() {
     } else {
         setLoading(true);
     }
-    const cacheKey = searchQuery ? `search_${searchQuery}_${category}_${pageToken || 'first'}` : `videos_${category}`;
+    const cacheKey = searchQuery ? `search_${searchQuery}_${category}_${pageToken || 'first'}` : `videos_${category}_${pageToken || 'first'}`;
     
     if (!forceRefresh) {
       try {
@@ -159,9 +159,9 @@ function HomePageContent() {
       } else {
         let response: VideoApiResponse | null = null;
         if (category === 'Semua') {
-          response = await getPopularVideos();
+          response = await getPopularVideos({ pageToken });
         } else {
-          response = await getVideosByCategory(category);
+          response = await getVideosByCategory(category, { pageToken });
         }
         
         if (response && response.videos) {
@@ -179,7 +179,7 @@ function HomePageContent() {
       setVideos(newVideos);
       setNextPageToken(newNextPageToken);
 
-      if (newVideos.length > 0) {
+      if (data.length > 0) {
         try {
           const cachePayload = { cachedVideos: data, cachedToken: newNextPageToken };
           sessionStorage.setItem(cacheKey, JSON.stringify(cachePayload));
@@ -199,16 +199,8 @@ function HomePageContent() {
   };
   
   useEffect(() => {
-    // This is the key fix: Initialize key usage tracker on every component load.
     initializeKeyUsage(TOTAL_API_KEYS);
-    
-    window['__onGCastApiAvailable'] = (isAvailable: boolean) => {
-      if (isAvailable) {
-        initializeCastApi();
-      }
-    };
-    
-    fetchAndSetVideos(q ? 'Semua' : selectedCategory, q);
+    fetchAndSetVideos(q ? 'Semua' : selectedCategory, q, false);
   }, [selectedCategory, q]);
 
   const handleReload = () => {
@@ -228,24 +220,10 @@ function HomePageContent() {
   };
 
   const handleLoadMore = () => {
-      if (q && nextPageToken) {
-          fetchAndSetVideos(selectedCategory, q, false, nextPageToken);
+      if (nextPageToken) {
+          fetchAndSetVideos(q ? 'Semua' : selectedCategory, q, false, nextPageToken);
       }
   }
-
-  const initializeCastApi = () => {
-    try {
-        if (window.cast && window.cast.framework) {
-            const context = cast.framework.CastContext.getInstance();
-            context.setOptions({
-                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-            });
-        }
-    } catch(error) {
-        console.error('Gagal inisialisasi Google Cast API:', error);
-    }
-  };
 
   const openVideoInNewTab = (startVideoId: string) => {
     const queue = getQueue();
@@ -296,14 +274,6 @@ function HomePageContent() {
     <div className="flex flex-col h-full">
         <Navbar 
           onReload={handleReload} 
-          onCast={() => {
-             try {
-                if (window.cast && window.cast.framework) {
-                    const context = cast.framework.CastContext.getInstance();
-                    context.requestSession().catch((err: any) => console.error(err));
-                }
-             } catch(e) { console.error(e) }
-          }}
           category={selectedCategory}
           onSelectVideo={handleSelectVideoFromSearch}
         />
@@ -346,5 +316,3 @@ function HomePageWrapper() {
 }
 
 export default HomePageWrapper;
-
-    

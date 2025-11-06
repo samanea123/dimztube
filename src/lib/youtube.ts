@@ -45,6 +45,9 @@ export interface VideoApiResponse {
     nextPageToken?: string | null;
 }
 
+interface FetchOptions {
+    pageToken?: string | null;
+}
 
 const formatDuration = (duration: string): string => {
   const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
@@ -162,7 +165,7 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
 
 
     if (!videoDetailsResult || !videoDetailsResult.response || !videoDetailsResult.response.items) {
-      return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost };
+      return { ...emptyResponse, apiKeyIndex: usedApiKeyIndex, cost: cost, nextPageToken: response.nextPageToken || null };
     }
 
     const channelIds = videoDetailsResult.response.items.map((item: any) => item.snippet?.channelId).filter(Boolean);
@@ -208,23 +211,31 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
 }
 
 
-export async function getPopularVideos(): Promise<VideoApiResponse> {
-  const apiResult = await fetchFromYouTube('videos', {
+export async function getPopularVideos(options: FetchOptions = {}): Promise<VideoApiResponse> {
+  const params: Record<string, string> = {
     part: 'id',
     chart: 'mostPopular',
     regionCode: 'ID',
     maxResults: '20',
-  }, 1);
+  };
+  if(options.pageToken) {
+    params.pageToken = options.pageToken;
+  }
+  const apiResult = await fetchFromYouTube('videos', params, 1);
   return processVideoResponse(apiResult);
 }
 
-export async function getVideosByCategory(category: string): Promise<VideoApiResponse> {
-    const apiResult = await fetchFromYouTube('search', {
+export async function getVideosByCategory(category: string, options: FetchOptions = {}): Promise<VideoApiResponse> {
+    const params: Record<string, string> = {
         part: 'id',
         q: category,
         type: 'video',
         maxResults: '20',
         regionCode: 'ID'
-    }, 100);
+    };
+    if (options.pageToken) {
+        params.pageToken = options.pageToken;
+    }
+    const apiResult = await fetchFromYouTube('search', params, 100);
     return processVideoResponse(apiResult);
 }
