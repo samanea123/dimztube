@@ -182,6 +182,7 @@ export default function PlayerPage() {
         'fs': 1, 
         'rel': 0,
         'playsinline': 1,
+        'mute': isAutoplay ? 1 : 0,
       },
       events: {
         'onReady': onPlayerReady,
