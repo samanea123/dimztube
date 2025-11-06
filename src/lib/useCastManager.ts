@@ -18,6 +18,7 @@ declare global {
     };
     cast?: any;
     chrome?: any;
+    __onGCastApiAvailable?: (isAvailable: boolean) => void;
   }
 }
 
@@ -33,23 +34,17 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   const [status, setStatus] = useState<CastStatus>('disconnected');
   const [mode, setMode] = useState<CastMode>('none');
   const [environment, setEnvironment] = useState<Environment>('browser');
-  const [wakeLock, setWakeLock] = useState<WakeLockSentinel | null>(null);
+  const [wakeLock, setWakeLock] = useState<any | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [deviceName, setDeviceName] = useState<string>('');
   const { toast } = useToast();
 
-  // Detect environment on mount
   useEffect(() => {
     const ua = navigator.userAgent;
-    if (window.AndroidInterface) {
-      setEnvironment('android');
-    } else if (window.electronAPI) {
-      setEnvironment('electron');
-    } else if (ua.includes('CrKey')) { // Basic detection for Android TV
-      setEnvironment('android-tv');
-    } else {
-      setEnvironment('browser');
-    }
+    if (window.AndroidInterface) setEnvironment('android');
+    else if (window.electronAPI) setEnvironment('electron');
+    else if (ua.includes('CrKey')) setEnvironment('android-tv');
+    else setEnvironment('browser');
   }, []);
 
   const acquireWakeLock = async () => {
@@ -57,9 +52,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
       try {
         const lock = await (navigator as any).wakeLock.request('screen');
         setWakeLock(lock);
-        lock.addEventListener('release', () => {
-          setWakeLock(null);
-        });
+        lock.addEventListener('release', () => setWakeLock(null));
       } catch (err) {
         console.warn('Gagal mengaktifkan Wake Lock:', err);
       }
@@ -67,18 +60,21 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   };
 
   const releaseWakeLock = useCallback(() => {
-    if (wakeLock) {
-      wakeLock.release();
-      setWakeLock(null);
-    }
+    wakeLock?.release();
+    setWakeLock(null);
     stream?.getTracks().forEach(track => track.stop());
     setStream(null);
   }, [wakeLock, stream]);
 
-
   const stopSession = useCallback((showAlert = true) => {
     if (environment === 'android') window.AndroidInterface?.stopSession();
     if (environment === 'electron') window.electronAPI?.stopSession();
+
+    // Stop Chromecast session
+    const castSession = window.cast?.framework?.CastContext.getInstance().getCurrentSession();
+    if (castSession) {
+      castSession.endSession(true);
+    }
     
     releaseWakeLock();
     setStatus('disconnected');
@@ -99,28 +95,24 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     switch (environment) {
       case 'android':
         window.AndroidInterface?.startMiracast(videoUrl);
-        setDeviceName('Perangkat Android'); // Placeholder
+        setDeviceName('Perangkat Android');
         setStatus('connected'); 
         break;
       case 'electron':
         window.electronAPI?.startCast(videoUrl);
-        setDeviceName('Perangkat Windows'); // Placeholder
+        setDeviceName('Perangkat Windows');
         setStatus('connected');
         break;
-      default: // Browser environment
-        if ('remote' in HTMLMediaElement.prototype) {
+      default:
+        if ('remote' in (HTMLMediaElement.prototype as any)) {
           try {
             const videoElement = document.createElement('video');
             videoElement.src = videoUrl;
             
-            videoElement.addEventListener('remotepromptclosed', () => {
-              if (videoElement.remote.state === 'disconnected') {
-                 stopSession(false);
-              }
-            });
-
+            (videoElement as any).remote.addEventListener('disconnect', () => stopSession(false));
+            
             await (videoElement as any).remote.prompt();
-            setDeviceName(videoElement.remote.deviceName || 'Perangkat Miracast');
+            setDeviceName((videoElement as any).remote.deviceName || 'Perangkat Miracast');
             setStatus('connected');
             acquireWakeLock();
           } catch (error) {
@@ -154,15 +146,13 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         setDeviceName('Layar Windows');
         setStatus('connected');
         break;
-      default: // Browser environment
+      default:
         if ('getDisplayMedia' in navigator.mediaDevices) {
           try {
             const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             setStream(displayStream);
             
-            displayStream.getVideoTracks()[0].addEventListener('ended', () => {
-              stopSession(false); 
-            });
+            displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
 
             setDeviceName('Seluruh Layar');
             setStatus('connected');
@@ -181,53 +171,47 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     }
   }, [environment, status, toast, stopSession]);
 
-
-  // Handle Chromecast (Google Cast) specifically
-  const startChromecast = useCallback(() => {
-    if (window.cast && window.cast.framework) {
-        const castSession = window.cast.framework.CastContext.getInstance().getCurrentSession();
-        if (castSession) {
-            setDeviceName(castSession.getCastDevice().friendlyName);
-            setMode('chromecast');
-            setStatus('connected');
-        } else {
-            window.cast.framework.CastContext.getInstance().requestSession()
-            .then((session: any) => {
-                setDeviceName(session.getCastDevice().friendlyName);
-                setMode('chromecast');
-                setStatus('connected');
-            })
-            .catch((err: any) => {
-                console.error(err);
-                toast({ variant: 'destructive', title: 'Gagal terhubung', description: 'Tidak bisa memulai sesi Chromecast.' });
-            });
-        }
-    } else {
-        toast({ title: 'Chromecast tidak siap', description: 'Pastikan Anda berada di lingkungan yang mendukung Google Cast.' });
-    }
-  }, [toast]);
-
-  // Listener for Chromecast session state changes
   useEffect(() => {
-      const castContext = window.cast?.framework?.CastContext?.getInstance();
-      if (!castContext) return;
+    const handleCastStateChange = (event: any) => {
+      const state = event.sessionState;
+      const session = window.cast.framework.CastContext.getInstance().getCurrentSession();
 
-      const handleSessionState = (event: any) => {
-          if (event.sessionState === 'SESSION_STARTED' || event.sessionState === 'SESSION_RESUMED') {
-              setStatus('connected');
-              setMode('chromecast');
-              setDeviceName(event.session.getCastDevice().friendlyName);
-          } else if (event.sessionState === 'SESSION_ENDED') {
-              stopSession(false);
-          }
-      };
-      
-      castContext.addEventListener(window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED, handleSessionState);
-
-      return () => {
-        castContext.removeEventListener(window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED, handleSessionState);
+      if (state === 'SESSION_STARTED' || state === 'SESSION_RESUMED') {
+        setStatus('connected');
+        setMode('chromecast');
+        setDeviceName(session?.getCastDevice()?.friendlyName || 'Perangkat Chromecast');
+        acquireWakeLock();
+      } else if (state === 'SESSION_ENDED') {
+        stopSession(false);
       }
+    };
+    
+    window['__onGCastApiAvailable'] = (isAvailable) => {
+        if(isAvailable) {
+            const castContext = window.cast.framework.CastContext.getInstance();
+            castContext.setOptions({
+                receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+            });
+            castContext.addEventListener(
+              window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+              handleCastStateChange
+            );
+        }
+    };
+
+    // Clean up on unmount
+    return () => {
+        const castContext = window.cast?.framework?.CastContext.getInstance();
+        if (castContext) {
+            castContext.removeEventListener(
+                window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+                handleCastStateChange
+            );
+        }
+    }
+
   }, [stopSession]);
 
-  return { status, mode, deviceName, startMiracast, startMirror, startChromecast, stopSession };
+  return { status, mode, deviceName, startMiracast, startMirror, stopSession };
 }

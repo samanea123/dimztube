@@ -14,24 +14,34 @@ export default function CastStatusIndicator() {
   if (status !== 'connected') {
     return null;
   }
+  
+  const getBackgroundColor = () => {
+    if (mode === 'chromecast') return 'bg-purple-600/20';
+    if (mode === 'miracast') return 'bg-green-600/20';
+    if (mode === 'mirror') return 'bg-blue-600/20';
+    return 'bg-card/80';
+  }
 
   return (
     <div
       className={cn(
         'fixed top-16 right-4 z-50 w-72 rounded-xl border bg-card/80 p-3 text-card-foreground shadow-lg backdrop-blur-md animate-in fade-in-0',
+        getBackgroundColor(),
         'sm:top-4'
       )}
     >
       <div className="flex items-center gap-3">
         {isCasting && (
-          <Tv className="h-5 w-5 flex-shrink-0 text-green-500" />
+          <Tv className={cn("h-5 w-5 flex-shrink-0", mode === 'chromecast' ? 'text-purple-400' : 'text-green-500')} />
         )}
         {isMirroring && (
           <Monitor className="h-5 w-5 flex-shrink-0 text-blue-500" />
         )}
         <div className="flex-1 overflow-hidden">
           <p className="text-sm font-semibold truncate">
-            {isCasting ? 'Casting ke perangkat' : 'Mirroring aktif'}
+            {isCasting && mode === 'chromecast' && 'Casting ke perangkat'}
+            {isCasting && mode === 'miracast' && 'Miracast aktif'}
+            {isMirroring && 'Mirroring aktif'}
           </p>
           <p className="text-xs text-muted-foreground truncate">
             {deviceName || (isMirroring ? 'Seluruh layar' : 'Perangkat tidak dikenal')}
