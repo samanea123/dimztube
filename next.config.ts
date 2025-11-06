@@ -48,6 +48,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // Ini diperlukan untuk mengatasi masalah dengan dependensi 'wrangler'
+    // dari 'node-webrtc' yang tidak diperlukan di lingkungan browser.
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'wrangler': false,
+        'fs': false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
