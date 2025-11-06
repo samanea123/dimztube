@@ -103,7 +103,7 @@ export default function CastAndMirrorButton() {
                         onClick={handleMirror}
                     >
                         <Monitor className="mr-2 h-4 w-4" />
-                        Mirror Tampilan Penuh
+                        Mirror Tampilan (Auto Detect)
                     </button>
 
                     <Button variant="outline" size="sm" className="mt-2" onClick={() => setIsOpen(false)}>Batal</Button>
