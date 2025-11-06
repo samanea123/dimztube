@@ -9,88 +9,18 @@ import {
   onSnapshot,
   updateDoc,
   Unsubscribe,
+  getFirestore,
 } from 'firebase/firestore';
-import { getFirestore } from '@/firebase';
 
-const db = getFirestore();
-
-// Firestore collections
-const sessionsCollection = collection(db, 'webrtc_sessions');
-
-export interface WebRTCSession {
-    id?: string;
-    offer?: RTCSessionDescriptionInit;
-    answer?: RTCSessionDescriptionInit;
-    status: 'waiting' | 'connecting' | 'connected' | 'disconnected';
-    createdAt: number;
+// Inisialisasi Firestore di sini karena file ini 'use client'
+// dan mungkin diimpor di tempat yang belum tentu punya akses ke provider.
+let db: any;
+try {
+    db = getFirestore();
+} catch (e) {
+    console.warn("Firestore belum diinisialisasi, akan dicoba lagi nanti.", e)
 }
 
-/**
- * Create a new WebRTC session in Firestore.
- */
-export async function createSession(): Promise<string> {
-    const docRef = await addDoc(sessionsCollection, {
-        status: 'waiting',
-        createdAt: Date.now(),
-    });
-    return docRef.id;
-}
-
-/**
- * Get a specific session document from Firestore.
- */
-export async function getSession(sessionId: string): Promise<WebRTCSession | null> {
-    const docRef = doc(db, 'webrtc_sessions', sessionId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as WebRTCSession;
-    }
-    return null;
-}
-
-/**
- * Update a session with an offer or answer.
- */
-export async function updateSession(sessionId: string, data: Partial<WebRTCSession>) {
-    const docRef = doc(db, 'webrtc_sessions', sessionId);
-    await updateDoc(docRef, data);
-}
-
-/**
- * Listen for changes to a session document.
- */
-export function onSessionUpdate(sessionId: string, callback: (session: WebRTCSession | null) => void): Unsubscribe {
-    const docRef = doc(db, 'webrtc_sessions', sessionId);
-    return onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            callback({ id: docSnap.id, ...docSnap.data() } as WebRTCSession);
-        } else {
-            callback(null);
-        }
-    });
-}
-
-/**
- * Add an ICE candidate to a subcollection.
- */
-export async function addIceCandidate(sessionId: string, side: 'sender' | 'receiver', candidate: RTCIceCandidateInit) {
-    const candidatesCollection = collection(db, 'webrtc_sessions', sessionId, `${side}Candidates`);
-    await addDoc(candidatesCollection, candidate);
-}
-
-/**
- * Listen for new ICE candidates in a subcollection.
- */
-export function onIceCandidate(sessionId: string, side: 'sender' | 'receiver', callback: (candidate: RTCIceCandidateInit) => void): Unsubscribe {
-    const candidatesCollection = collection(db, 'webrtc_sessions', sessionId, `${side}Candidates`);
-    return onSnapshot(candidatesCollection, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-                callback(change.doc.data() as RTCIceCandidateInit);
-            }
-        });
-    });
-}
 
 export const servers: RTCConfiguration = {
     iceServers: [
@@ -103,3 +33,61 @@ export const servers: RTCConfiguration = {
     ],
     iceCandidatePoolSize: 10,
 };
+
+export interface WebRTCSession {
+    id?: string;
+    offer?: RTCSessionDescriptionInit;
+    answer?: RTCSessionDescriptionInit;
+    status?: 'waiting' | 'connecting' | 'connected' | 'disconnected';
+    createdAt?: number;
+}
+
+
+const getDb = () => {
+    if (!db) {
+        db = getFirestore();
+    }
+    return db;
+}
+
+
+export async function createSession(): Promise<string> {
+    const docRef = await addDoc(collection(getDb(), 'webrtc_sessions'), {
+        status: 'waiting',
+        createdAt: Date.now(),
+    });
+    return docRef.id;
+}
+
+
+export async function updateSession(sessionId: string, data: Partial<WebRTCSession>) {
+    const docRef = doc(getDb(), 'webrtc_sessions', sessionId);
+    await updateDoc(docRef, data);
+}
+
+export function onSessionUpdate(sessionId: string, callback: (session: WebRTCSession | null) => void): Unsubscribe {
+    const docRef = doc(getDb(), 'webrtc_sessions', sessionId);
+    return onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            callback({ id: docSnap.id, ...docSnap.data() } as WebRTCSession);
+        } else {
+            callback(null);
+        }
+    });
+}
+
+export async function addIceCandidate(sessionId: string, side: 'sender' | 'receiver', candidate: RTCIceCandidateInit) {
+    const candidatesCollection = collection(getDb(), 'webrtc_sessions', sessionId, `${side}Candidates`);
+    await addDoc(candidatesCollection, candidate);
+}
+
+export function onIceCandidate(sessionId: string, side: 'sender' | 'receiver', callback: (candidate: RTCIceCandidateInit) => void): Unsubscribe {
+    const candidatesCollection = collection(getDb(), 'webrtc_sessions', sessionId, `${side}Candidates`);
+    return onSnapshot(candidatesCollection, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                callback(change.doc.data() as RTCIceCandidateInit);
+            }
+        });
+    });
+}

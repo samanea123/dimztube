@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import BottomNav from "@/components/layout/bottom-nav";
+import { FirebaseClientProvider } from "@/firebase";
 
 export const metadata: Metadata = {
   title: "DimzTube",
@@ -37,13 +38,15 @@ export default function RootLayout({
         <script src="https://www.gstatic.com/cv/js/sender/v1/cast_framework.js" async></script>
       </head>
       <body className="font-body antialiased bg-background text-foreground">
-        <div className="relative flex min-h-screen w-full flex-col">
-          <main className="flex-1">
-              {children}
-          </main>
-          <BottomNav />
-          <Toaster />
-        </div>
+        <FirebaseClientProvider>
+            <div className="relative flex min-h-screen w-full flex-col">
+              <main className="flex-1">
+                  {children}
+              </main>
+              <BottomNav />
+              <Toaster />
+            </div>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

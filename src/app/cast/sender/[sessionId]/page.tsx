@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useFirebase } from '@/firebase';
 import { onSessionUpdate, updateSession, servers, addIceCandidate, onIceCandidate } from '@/lib/webrtc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Monitor, Phone, Wifi, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getFirestore } from 'firebase/firestore';
 
 
 type Status = 'waiting' | 'requesting' | 'streaming' | 'failed' | 'disconnected';
@@ -15,15 +15,31 @@ type Status = 'waiting' | 'requesting' | 'streaming' | 'failed' | 'disconnected'
 export default function SenderPage() {
   const { toast } = useToast();
   const params = useParams();
-  const { firestore } = useFirebase();
   const sessionId = params.sessionId as string;
   
   const [status, setStatus] = useState<Status>('waiting');
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const [firestoreInitialized, setFirestoreInitialized] = useState(false);
+
+  useEffect(() => {
+    try {
+      getFirestore();
+      setFirestoreInitialized(true);
+    } catch (e) {
+      console.error("Firebase belum siap, halaman ini tidak dapat berfungsi.", e);
+      setStatus('failed');
+       toast({
+        variant: 'destructive',
+        title: 'Error Koneksi',
+        description: 'Gagal terhubung ke layanan Firebase.',
+      });
+    }
+  }, [toast]);
+
 
   const startCasting = async () => {
-    if (!firestore || !sessionId) return;
+    if (!firestoreInitialized || !sessionId) return;
     setStatus('requesting');
 
     try {
@@ -44,32 +60,29 @@ export default function SenderPage() {
       };
 
       pc.onconnectionstatechange = () => {
-          if(pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
               setStatus('disconnected');
           }
-          if(pc.connectionState === 'connected') {
+          if (pc.connectionState === 'connected') {
               setStatus('streaming');
           }
-      }
+      };
+      
+      const unsubSession = onSessionUpdate(sessionId, async (session) => {
+        if (session?.answer && pc.signalingState !== 'stable') {
+          await pc.setRemoteDescription(new RTCSessionDescription(session.answer));
+        }
+      });
+      
+      onIceCandidate(sessionId, 'receiver', (candidate) => {
+        if (pc.remoteDescription) {
+          pc.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      });
       
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       await updateSession(sessionId, { offer, status: 'connecting' });
-      
-      // Listen for answer
-      const unsubSession = onSessionUpdate(sessionId, async (session) => {
-        if (session?.answer && pc.signalingState !== 'stable') {
-          await pc.setRemoteDescription(new RTCSessionDescription(session.answer));
-          unsubSession(); // Stop listening after getting the answer
-        }
-      });
-      
-      // Listen for receiver's ICE candidates
-      onIceCandidate(sessionId, 'receiver', (candidate) => {
-        if (pc.remoteDescription) { // Only add if remote description is set
-          pc.addIceCandidate(new RTCIceCandidate(candidate));
-        }
-      });
       
     } catch (err) {
       console.error('Gagal memulai sesi cast:', err);
@@ -79,16 +92,20 @@ export default function SenderPage() {
         description: 'Anda mungkin telah membatalkan permintaan atau browser tidak mendukung fitur ini.',
       });
       setStatus('failed');
-      updateSession(sessionId, { status: 'disconnected' });
+      if (sessionId) {
+        updateSession(sessionId, { status: 'disconnected' });
+      }
     }
   };
   
   const stopCasting = () => {
     pcRef.current?.close();
-    if(localVideoRef.current?.srcObject){
+    if (localVideoRef.current?.srcObject) {
         (localVideoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
     }
-    updateSession(sessionId, { status: 'disconnected' });
+    if (sessionId) {
+      updateSession(sessionId, { status: 'disconnected' });
+    }
     setStatus('disconnected');
     setTimeout(() => window.close(), 1000);
   }
@@ -119,6 +136,12 @@ export default function SenderPage() {
           case 'disconnected': return <XCircle className="h-10 w-10 text-muted-foreground" />;
       }
   }
+  
+  useEffect(() => {
+    // Automatically start casting when component mounts
+    startCasting();
+  }, [firestoreInitialized, sessionId]);
+
 
   return (
     <div className="w-screen h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-4">
@@ -134,7 +157,7 @@ export default function SenderPage() {
              </div>
           </CardTitle>
           <CardDescription>
-            Anda akan memulai sesi casting layar dari perangkat ini ke perangkat TV Anda.
+            Hubungkan perangkat ini ke TV dengan memilih layar atau jendela yang ingin Anda bagikan.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">
@@ -143,19 +166,13 @@ export default function SenderPage() {
             </div>
             <p className="text-lg font-medium mb-6">{renderStatus()}</p>
 
-            {status === 'waiting' && (
-                <Button size="lg" onClick={startCasting}>Mulai Cast</Button>
-            )}
-            
-            {(status === 'streaming' || status === 'requesting') && (
+            {status === 'streaming' || status === 'requesting' ? (
                 <Button size="lg" variant="destructive" onClick={stopCasting}>Hentikan Cast</Button>
+            ) : (
+                 <Button size="lg" onClick={() => window.location.reload()}>Coba Lagi</Button>
             )}
             
-             {(status === 'failed' || status === 'disconnected') && (
-                <Button size="lg" onClick={() => window.location.reload()}>Coba Lagi</Button>
-            )}
-
-            <video ref={localVideoRef} autoPlay muted playsInline className="mt-6 w-full rounded-lg border bg-black" />
+            <video ref={localVideoRef} autoPlay muted playsInline className="mt-6 w-full rounded-lg border bg-black aspect-video" />
             <p className="text-xs text-muted-foreground mt-2">ID Sesi: {sessionId}</p>
         </CardContent>
       </Card>

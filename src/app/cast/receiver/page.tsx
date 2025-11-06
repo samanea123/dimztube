@@ -2,25 +2,39 @@
 
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
-import { useFirebase } from '@/firebase';
 import { createSession, onSessionUpdate, updateSession, addIceCandidate, onIceCandidate, servers } from '@/lib/webrtc';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Tv2, ScanLine, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2, Tv2, ScanLine, CheckCircle, WifiOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { getFirestore } from 'firebase/firestore';
 
-type Status = 'waiting' | 'generating' | 'connecting' | 'connected' | 'failed';
 
+type Status = 'generating' | 'waiting' | 'connecting' | 'connected' | 'failed';
+
+// Komponen ini harus dibungkus dalam FirebaseProvider di layout
 export default function ReceiverPage() {
-  const { firestore } = useFirebase();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>('generating');
   const [senderUrl, setSenderUrl] = useState<string>('');
+  const [firestoreInitialized, setFirestoreInitialized] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
 
+  // Inisialisasi Firestore di client-side
   useEffect(() => {
-    if (!firestore) return;
+    try {
+      getFirestore();
+      setFirestoreInitialized(true);
+    } catch (e) {
+      console.error("Firebase belum siap, halaman ini tidak dapat berfungsi.", e);
+      setStatus('failed');
+    }
+  }, []);
+
+  // Membuat sesi WebRTC baru
+  useEffect(() => {
+    if (!firestoreInitialized) return;
 
     async function initializeSession() {
         try {
@@ -35,10 +49,11 @@ export default function ReceiverPage() {
         }
     }
     initializeSession();
-  }, [firestore]);
+  }, [firestoreInitialized]);
 
+  // Logika WebRTC untuk Receiver
   useEffect(() => {
-    if (!sessionId || !firestore) return;
+    if (!sessionId || !firestoreInitialized) return;
     
     const pc = new RTCPeerConnection(servers);
     pcRef.current = pc;
@@ -56,33 +71,28 @@ export default function ReceiverPage() {
       }
     };
     
-    // Listen for sender's ICE candidates
     const unsubscribeIce = onIceCandidate(sessionId, 'sender', (candidate) => {
         pc.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
-    // Listen for session updates (specifically for the offer)
     const unsubscribeSession = onSessionUpdate(sessionId, async (session) => {
+      // Hanya proses offer jika belum ada remote description
       if (session?.offer && !pc.currentRemoteDescription) {
         try {
             setStatus('connecting');
             await pc.setRemoteDescription(new RTCSessionDescription(session.offer));
+            
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
             await updateSession(sessionId, { answer });
-            
-            // Listen for sender's ICE candidates after setting offer
-            onIceCandidate(sessionId, 'sender', (candidate) => {
-                if (pc.remoteDescription) { // Ensure remote description is set
-                    pc.addIceCandidate(new RTCIceCandidate(candidate));
-                }
-            });
-
         } catch (error) {
             console.error("Gagal membuat answer atau set description:", error);
             setStatus('failed');
         }
+      } else if(session?.status === 'disconnected') {
+        pc.close();
+        setStatus('failed');
       }
     });
 
@@ -92,7 +102,7 @@ export default function ReceiverPage() {
       pc.close();
     };
 
-  }, [sessionId, firestore]);
+  }, [sessionId, firestoreInitialized]);
 
   const renderStatus = () => {
       switch(status) {
@@ -105,10 +115,22 @@ export default function ReceiverPage() {
           case 'connected':
               return <div className="flex flex-col items-center gap-2"><CheckCircle className="h-6 w-6 text-green-500"/><span>Terhubung</span></div>;
           case 'failed':
-              return <div className="flex flex-col items-center gap-2 text-destructive"><CheckCircle className="h-6 w-6"/><span>Koneksi Gagal</span></div>;
+              return <div className="flex flex-col items-center gap-2 text-destructive"><WifiOff className="h-6 w-6"/><span>Koneksi Gagal/Terputus</span></div>;
       }
   }
 
+  if (!firestoreInitialized) {
+      return (
+        <div className="w-screen h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-8">
+            <Card className="bg-neutral-800 border-neutral-700 text-white max-w-md w-full">
+                <CardHeader className="text-center">
+                    <CardTitle>Error</CardTitle>
+                    <CardDescription className="text-destructive">Gagal terhubung ke layanan Firebase. Pastikan aplikasi telah dikonfigurasi dengan benar.</CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
+      )
+  }
 
   return (
     <div className="w-screen h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-8">
@@ -118,7 +140,7 @@ export default function ReceiverPage() {
         )} />
 
         <div className={cn(
-            "transition-opacity duration-500",
+            "z-10 transition-opacity duration-500",
             status === 'connected' ? 'opacity-0 pointer-events-none' : 'opacity-100'
         )}>
             <Card className="bg-neutral-800 border-neutral-700 text-white max-w-md w-full">
@@ -138,7 +160,6 @@ export default function ReceiverPage() {
                 </CardContent>
             </Card>
         </div>
-        
     </div>
   );
 }
