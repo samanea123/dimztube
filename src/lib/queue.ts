@@ -7,7 +7,9 @@ const SETTINGS_KEY = "dimztubeSettings";
 const CURRENT_INDEX_KEY = "dimztubeCurrentIndex";
 
 function dispatchQueueUpdate() {
-  window.dispatchEvent(new Event("queueUpdated"));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event("queueUpdated"));
+  }
 }
 
 // Queue Management
@@ -16,6 +18,11 @@ export function setQueue(videos: VideoItem[]) {
   localStorage.setItem(QUEUE_KEY, JSON.stringify(videos));
   if (videos.length === 0) {
       localStorage.removeItem(CURRENT_INDEX_KEY);
+  } else {
+      const currentIndex = getCurrentIndex();
+      if (currentIndex >= videos.length) {
+          setCurrentIndex(videos.length - 1);
+      }
   }
   dispatchQueueUpdate();
 }
@@ -45,7 +52,6 @@ export function removeFromQueue(index: number) {
   queue.splice(index, 1);
   setQueue(queue);
   
-  // Adjust current index if necessary
   const currentIndex = getCurrentIndex();
   if (index < currentIndex) {
       setCurrentIndex(currentIndex - 1);
@@ -57,7 +63,6 @@ export function removeFromQueue(index: number) {
 export function clearQueue() {
   if (typeof window === 'undefined') return;
   setQueue([]);
-  setCurrentIndex(0);
 }
 
 
@@ -80,18 +85,57 @@ export function getCurrentIndex(): number {
 export function playNext(): number {
     const queue = getQueue();
     if(queue.length === 0) return -1;
+    
+    const settings = getSettings();
     const currentIndex = getCurrentIndex();
-    const newIndex = Math.min(queue.length - 1, currentIndex + 1);
-    setCurrentIndex(newIndex);
-    return newIndex;
+    
+    if (settings.shuffle) {
+        const newIndex = Math.floor(Math.random() * queue.length);
+        setCurrentIndex(newIndex);
+        return newIndex;
+    }
+    
+    if (currentIndex < queue.length - 1) {
+        const newIndex = currentIndex + 1;
+        setCurrentIndex(newIndex);
+        return newIndex;
+    } 
+    
+    if (settings.repeat) {
+        const newIndex = 0;
+        setCurrentIndex(newIndex);
+        return newIndex;
+    }
+
+    return -1; // No next video
 }
 
 export function playPrev(): number {
-    if(getQueue().length === 0) return -1;
+    const queue = getQueue();
+    if(queue.length === 0) return -1;
+    
+    const settings = getSettings();
     const currentIndex = getCurrentIndex();
-    const newIndex = Math.max(0, currentIndex - 1);
-    setCurrentIndex(newIndex);
-    return newIndex;
+
+    if (settings.shuffle) {
+        const newIndex = Math.floor(Math.random() * queue.length);
+        setCurrentIndex(newIndex);
+        return newIndex;
+    }
+
+    if (currentIndex > 0) {
+        const newIndex = currentIndex - 1;
+        setCurrentIndex(newIndex);
+        return newIndex;
+    }
+
+    if (settings.repeat) {
+        const newIndex = queue.length - 1;
+        setCurrentIndex(newIndex);
+        return newIndex;
+    }
+
+    return -1; // No previous video
 }
 
 

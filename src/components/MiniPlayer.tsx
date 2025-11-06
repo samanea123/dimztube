@@ -5,7 +5,7 @@ import Image from "next/image";
 import { getQueue, playNext, playPrev, setCurrentIndex, getCurrentIndex, setQueue } from "@/lib/queue";
 import type { VideoItem } from "@/lib/youtube";
 import { Button } from "./ui/button";
-import { Maximize, Play, SkipBack, SkipForward, X } from "lucide-react";
+import { Maximize, Play, SkipBack, SkipForward, X, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => void }) {
@@ -20,16 +20,13 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
       setLocalQueue(currentQueue);
       setCurrentIdx(currentIdx);
 
-      // Check if queue sidebar is open by checking for its data attribute
       const queueSidebar = document.querySelector('[data-state="open"]');
       setIsQueueOpen(!!queueSidebar);
     };
 
-    updateState(); // Initial load
+    updateState();
 
     window.addEventListener("queueUpdated", updateState);
-    
-    // Also listen for changes to localStorage from other tabs
     window.addEventListener("storage", (e) => {
         if (e.key === 'dimztubeQueue' || e.key === 'dimztubeCurrentIndex') {
             updateState();
@@ -61,7 +58,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
   
   const handleClose = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setQueue([]); // Clear the queue which will hide the player
+      setQueue([]);
   }
 
   const currentVideo = queue[currentIndex];
@@ -74,7 +71,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
     <div 
         onClick={() => onPlay(currentVideo.id)}
         className={cn(
-        "fixed bottom-[70px] sm:bottom-4 right-4 bg-card/95 border border-border rounded-xl shadow-lg p-3 flex gap-3 items-center w-[calc(100%-2rem)] sm:w-[340px] z-40 backdrop-blur-sm animate-in fade-in-0 slide-in-from-bottom-4 duration-300 cursor-pointer",
+        "fixed bottom-[70px] sm:bottom-4 right-4 bg-card/95 border rounded-xl shadow-lg p-3 flex gap-3 items-center w-[calc(100%-2rem)] sm:w-[340px] z-40 backdrop-blur-sm animate-in fade-in-0 slide-in-from-bottom-4 duration-300 cursor-pointer",
         isQueueOpen && "hidden"
     )}>
       {currentVideo.thumbnailUrl && (
@@ -93,7 +90,7 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
           <Button onClick={(e) => { e.stopPropagation(); onPlay(currentVideo.id); }} variant="ghost" size="icon" className="h-8 w-8">
             <Play className="w-4 h-4"/>
           </Button>
-          <Button onClick={(e) => { e.stopPropagation(); handlePlayNext(); }} variant="ghost" size="icon" className="h-8 w-8" disabled={currentIndex === queue.length - 1}>
+          <Button onClick={(e) => { e.stopPropagation(); handlePlayNext(); }} variant="ghost" size="icon" className="h-8 w-8" disabled={currentIndex >= queue.length - 1}>
             <SkipForward className="w-4 h-4"/>
           </Button>
            <Button onClick={handleClose} variant="ghost" size="icon" className="h-8 w-8">

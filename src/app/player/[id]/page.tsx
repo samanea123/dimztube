@@ -156,9 +156,13 @@ export default function PlayerPage() {
       document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
       document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
       
-      if (videoElementRef.current) {
-        videoElementRef.current.removeEventListener('enterpictureinpicture', handleEnterPiP);
-        videoElementRef.current.removeEventListener('leavepictureinpicture', handleLeavePiP);
+      const iframe = playerRef.current?.getIframe();
+      if (iframe && iframe.contentDocument) {
+        const videoEl = iframe.contentDocument.querySelector('video');
+         if (videoEl) {
+           videoEl.removeEventListener('enterpictureinpicture', handleEnterPiP);
+           videoEl.removeEventListener('leavepictureinpicture', handleLeavePiP);
+         }
       }
     };
   }, [videoId]);
@@ -194,12 +198,13 @@ export default function PlayerPage() {
   async function onPlayerReady(event: any) {
     setupMediaSession();
 
-    // Attach PiP listeners
     const iframe = event.target.getIframe();
-    videoElementRef.current = iframe?.contentDocument?.querySelector('video');
-    if (videoElementRef.current) {
-        videoElementRef.current.addEventListener('enterpictureinpicture', handleEnterPiP);
-        videoElementRef.current.addEventListener('leavepictureinpicture', handleLeavePiP);
+    if (iframe && iframe.contentDocument) {
+      const videoEl = iframe.contentDocument.querySelector('video');
+      if (videoEl) {
+        videoEl.addEventListener('enterpictureinpicture', handleEnterPiP);
+        videoEl.addEventListener('leavepictureinpicture', handleLeavePiP);
+      }
     }
     
     if (isAutoplay) {

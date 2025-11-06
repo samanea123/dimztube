@@ -236,19 +236,23 @@ function HomePageContent() {
     if (currentIndex === -1) {
       const videoToPlay = videos.find(v => v.id === startVideoId);
       if (videoToPlay) {
-         setQueue([videoToPlay]);
+         // This is a new play action, so reset the queue.
+         setQueue([videoToPlay, ...videos.filter(v => v.id !== startVideoId)]);
          setCurrentIndex(0);
       } else {
         const videoFromQueue = getQueue().find(v => v.id === startVideoId);
         if (videoFromQueue) {
-            setQueue([videoFromQueue]);
-            setCurrentIndex(0);
+            // Playing from an existing queue, just set the index
+            const idx = getQueue().findIndex(v => v.id === startVideoId);
+            setCurrentIndex(idx);
         } else {
+            // Fallback for an unknown video
             setQueue([{ id: startVideoId, title: 'Video', thumbnailUrl: '', channelTitle: '' }]);
             setCurrentIndex(0);
         }
       }
     } else {
+       // Video is already in the queue, just set the index
        setCurrentIndex(currentIndex);
     }
     
