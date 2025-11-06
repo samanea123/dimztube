@@ -35,6 +35,7 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   const [environment, setEnvironment] = useState<Environment>('browser');
   const [wakeLock, setWakeLock] = useState<WakeLockSentinel | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [deviceName, setDeviceName] = useState<string>('');
   const { toast } = useToast();
 
   // Detect environment on mount
@@ -57,10 +58,8 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         const lock = await (navigator as any).wakeLock.request('screen');
         setWakeLock(lock);
         lock.addEventListener('release', () => {
-          console.log('Wake Lock dilepas.');
           setWakeLock(null);
         });
-        console.log('Wake Lock aktif.');
       } catch (err) {
         console.warn('Gagal mengaktifkan Wake Lock:', err);
       }
@@ -77,6 +76,20 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
   }, [wakeLock, stream]);
 
 
+  const stopSession = useCallback((showAlert = true) => {
+    if (environment === 'android') window.AndroidInterface?.stopSession();
+    if (environment === 'electron') window.electronAPI?.stopSession();
+    
+    releaseWakeLock();
+    setStatus('disconnected');
+    setMode('none');
+    setDeviceName('');
+
+    if (showAlert) {
+        toast({ title: '🛑 Sesi Cast/Mirror Dihentikan' });
+    }
+  }, [environment, releaseWakeLock, toast]);
+
   const startMiracast = useCallback(async (videoUrl: string) => {
     if (status === 'connected') return;
 
@@ -86,10 +99,12 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     switch (environment) {
       case 'android':
         window.AndroidInterface?.startMiracast(videoUrl);
-        setStatus('connected'); // Assume native handles it
+        setDeviceName('Perangkat Android'); // Placeholder
+        setStatus('connected'); 
         break;
       case 'electron':
         window.electronAPI?.startCast(videoUrl);
+        setDeviceName('Perangkat Windows'); // Placeholder
         setStatus('connected');
         break;
       default: // Browser environment
@@ -97,24 +112,30 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
           try {
             const videoElement = document.createElement('video');
             videoElement.src = videoUrl;
+            
+            videoElement.addEventListener('remotepromptclosed', () => {
+              if (videoElement.remote.state === 'disconnected') {
+                 stopSession(false);
+              }
+            });
+
             await (videoElement as any).remote.prompt();
+            setDeviceName(videoElement.remote.deviceName || 'Perangkat Miracast');
             setStatus('connected');
             acquireWakeLock();
           } catch (error) {
             console.error('Remote Playback API gagal:', error);
-            setStatus('disconnected');
-            setMode('none');
+            stopSession(false);
             toast({ variant: 'destructive', title: 'Cast Gagal', description: 'Gagal memulai sesi cast video.' });
           }
         } else {
             onNoMiracastDevice?.();
             console.warn('Remote Playback API tidak didukung.');
-            setStatus('disconnected');
-            setMode('none');
+            stopSession(false);
         }
         break;
     }
-  }, [environment, status, onNoMiracastDevice, toast]);
+  }, [environment, status, onNoMiracastDevice, toast, stopSession]);
 
   const startMirror = useCallback(async () => {
     if (status === 'connected') return;
@@ -125,70 +146,54 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     switch (environment) {
       case 'android':
         window.AndroidInterface?.startMirror();
+        setDeviceName('Layar Android');
         setStatus('connected');
         break;
       case 'electron':
         window.electronAPI?.startMirror();
+        setDeviceName('Layar Windows');
         setStatus('connected');
         break;
       default: // Browser environment
         if ('getDisplayMedia' in navigator.mediaDevices) {
           try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({
-              video: true,
-              audio: true
-            });
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             setStream(displayStream);
             
-            // This is where you would implement the WebRTC logic to send the stream.
-            // For now, we'll just activate wake lock and set status.
-            await acquireWakeLock();
-
             displayStream.getVideoTracks()[0].addEventListener('ended', () => {
-              stopSession(false); // Stop session if user stops sharing from browser UI
+              stopSession(false); 
             });
 
+            setDeviceName('Seluruh Layar');
             setStatus('connected');
-            toast({ title: '✅ Mirror Mode Aktif', description: 'Buka menu Cast di browser Anda dan pilih "Cast tab" untuk menampilkan di TV.' });
+            acquireWakeLock();
+            toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
 
           } catch (error) {
             console.error('Gagal memulai mirror:', error);
             stopSession(false);
           }
         } else {
-          // Fallback to WebRTC PeerConnection (not fully implemented here)
           toast({ variant: 'destructive', title: 'Fitur Tidak Didukung', description: 'Mirroring layar tidak didukung di browser ini.' });
           stopSession(false);
         }
         break;
     }
-  }, [environment, status, toast]);
+  }, [environment, status, toast, stopSession]);
 
-
-  const stopSession = useCallback((showAlert = true) => {
-    if (environment === 'android') window.AndroidInterface?.stopSession();
-    if (environment === 'electron') window.electronAPI?.stopSession();
-    
-    releaseWakeLock();
-    setStatus('disconnected');
-    setMode('none');
-
-    if (showAlert) {
-        toast({ title: '🛑 Sesi Cast/Mirror Dihentikan' });
-    }
-  }, [environment, releaseWakeLock, toast]);
 
   // Handle Chromecast (Google Cast) specifically
   const startChromecast = useCallback(() => {
     if (window.cast && window.cast.framework) {
         const castSession = window.cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
-            // Further logic to load media
+            setDeviceName(castSession.getCastDevice().friendlyName);
             setMode('chromecast');
             setStatus('connected');
         } else {
             window.cast.framework.CastContext.getInstance().requestSession()
-            .then(() => {
+            .then((session: any) => {
+                setDeviceName(session.getCastDevice().friendlyName);
                 setMode('chromecast');
                 setStatus('connected');
             })
@@ -202,5 +207,27 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
     }
   }, [toast]);
 
-  return { status, mode, environment, startMiracast, startMirror, startChromecast, stopSession };
+  // Listener for Chromecast session state changes
+  useEffect(() => {
+      const castContext = window.cast?.framework?.CastContext?.getInstance();
+      if (!castContext) return;
+
+      const handleSessionState = (event: any) => {
+          if (event.sessionState === 'SESSION_STARTED' || event.sessionState === 'SESSION_RESUMED') {
+              setStatus('connected');
+              setMode('chromecast');
+              setDeviceName(event.session.getCastDevice().friendlyName);
+          } else if (event.sessionState === 'SESSION_ENDED') {
+              stopSession(false);
+          }
+      };
+      
+      castContext.addEventListener(window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED, handleSessionState);
+
+      return () => {
+        castContext.removeEventListener(window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED, handleSessionState);
+      }
+  }, [stopSession]);
+
+  return { status, mode, deviceName, startMiracast, startMirror, startChromecast, stopSession };
 }

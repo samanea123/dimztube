@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import QueueSidebar from '@/components/QueueSidebar';
 import MiniPlayer from '@/components/MiniPlayer';
 import type { VideoItem as SearchVideoItem } from '@/components/SearchBar';
+import CastStatusIndicator from '@/components/CastStatusIndicator';
 
 const KEY_USAGE_STORAGE_KEY = 'yt_keys_usage';
 const TOTAL_API_KEYS = 5; // Define total keys available
@@ -277,6 +278,7 @@ function HomePageContent() {
           category={selectedCategory}
           onSelectVideo={handleSelectVideoFromSearch}
         />
+        <CastStatusIndicator />
         <div className="sticky top-14 z-10 bg-background/95 backdrop-blur">
              <CategoryBar
                 categories={categories}
