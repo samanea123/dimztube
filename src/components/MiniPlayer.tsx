@@ -150,12 +150,14 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
     };
   }, []);
 
-  const handlePlayNext = () => {
+  const handlePlayNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const nextIndex = playNext();
     if(nextIndex !== -1 && queue[nextIndex]) onPlay(queue[nextIndex].id);
   }
 
-  const handlePlayPrev = () => {
+  const handlePlayPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const prevIndex = playPrev();
     if(prevIndex !== -1 && queue[prevIndex]) onPlay(queue[prevIndex].id);
   }
@@ -169,6 +171,11 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
       if(isDragging) return;
       if (currentVideo) onPlay(currentVideo.id);
   };
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if(currentVideo) onPlay(currentVideo.id);
+  }
 
   const currentVideo = queue[currentIndex];
 
@@ -184,8 +191,8 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
         onTouchStart={onTouchStart}
         onClick={handleClick}
         className={cn(
-        "bg-card/95 border rounded-xl shadow-lg p-3 flex gap-3 items-center w-[340px] z-40 backdrop-blur-sm animate-in fade-in-0 slide-in-from-bottom-4 duration-300",
-        isDragging ? 'cursor-grabbing' : 'cursor-grab',
+        "bg-card/95 border rounded-xl p-3 flex gap-3 items-center w-[340px] z-40 backdrop-blur-sm animate-in fade-in-0 slide-in-from-bottom-4 duration-300 transition-all",
+        isDragging ? 'cursor-grabbing shadow-2xl scale-105' : 'cursor-grab shadow-lg',
         isQueueOpen && "hidden"
     )}>
       {currentVideo.thumbnailUrl && (
@@ -198,13 +205,13 @@ export default function MiniPlayer({ onPlay }: { onPlay: (videoId: string) => vo
         <p className="text-muted-foreground text-xs truncate">{currentVideo.channelTitle}</p>
       </div>
       <div className="flex gap-1 items-center">
-          <Button onClick={(e) => { e.stopPropagation(); handlePlayPrev(); }} variant="ghost" size="icon" className="h-8 w-8" disabled={currentIndex === 0}>
+          <Button onClick={handlePlayPrev} variant="ghost" size="icon" className="h-8 w-8" disabled={currentIndex === 0}>
             <SkipBack className="w-4 h-4"/>
           </Button>
-          <Button onClick={(e) => { e.stopPropagation(); if(currentVideo) onPlay(currentVideo.id); }} variant="ghost" size="icon" className="h-8 w-8">
+          <Button onClick={handlePlayClick} variant="ghost" size="icon" className="h-8 w-8">
             <Play className="w-4 h-4"/>
           </Button>
-          <Button onClick={(e) => { e.stopPropagation(); handlePlayNext(); }} variant="ghost" size="icon" className="h-8 w-8" disabled={currentIndex >= queue.length - 1}>
+          <Button onClick={handlePlayNext} variant="ghost" size="icon" className="h-8 w-8" disabled={currentIndex >= queue.length - 1}>
             <SkipForward className="w-4 h-4"/>
           </Button>
            <Button onClick={handleClose} variant="ghost" size="icon" className="h-8 w-8">
