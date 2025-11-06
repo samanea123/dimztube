@@ -180,7 +180,8 @@ export default function PlayerPage() {
         'autoplay': isAutoplay ? 1 : 0, 
         'controls': 1, 
         'fs': 1, 
-        'rel': 0 
+        'rel': 0,
+        'playsinline': 1,
       },
       events: {
         'onReady': onPlayerReady,
@@ -193,7 +194,8 @@ export default function PlayerPage() {
     setupMediaSession();
 
     // Attach PiP listeners
-    videoElementRef.current = event.target.getIframe()?.contentDocument?.querySelector('video');
+    const iframe = event.target.getIframe();
+    videoElementRef.current = iframe?.contentDocument?.querySelector('video');
     if (videoElementRef.current) {
         videoElementRef.current.addEventListener('enterpictureinpicture', handleEnterPiP);
         videoElementRef.current.addEventListener('leavepictureinpicture', handleLeavePiP);
@@ -203,7 +205,6 @@ export default function PlayerPage() {
       event.target.playVideo();
 
       try {
-        const iframe = document.getElementById('player');
         if (iframe?.requestFullscreen) await iframe.requestFullscreen({ navigationUI: "hide" });
         else if ((iframe as any)?.mozRequestFullScreen) await (iframe as any).mozRequestFullScreen();
         else if ((iframe as any)?.webkitRequestFullScreen) await (iframe as any).webkitRequestFullScreen();
