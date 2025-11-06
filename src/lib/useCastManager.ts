@@ -104,30 +104,34 @@ export function useCastManager({ onNoMiracastDevice }: CastManagerOptions = {}) 
         setStatus('connected');
         break;
       default:
-        if ('remote' in (HTMLMediaElement.prototype as any)) {
-          try {
-            const videoElement = document.createElement('video');
-            videoElement.src = videoUrl;
+        // NEW LOGIC using getDisplayMedia
+        try {
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: true,
+            });
+            setStream(displayStream);
             
-            (videoElement as any).remote.addEventListener('disconnect', () => stopSession(false));
-            
-            await (videoElement as any).remote.prompt();
-            setDeviceName((videoElement as any).remote.deviceName || 'Perangkat Miracast');
+            displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
+
+            setDeviceName('Layar yang Dibagikan');
             setStatus('connected');
             acquireWakeLock();
-          } catch (error) {
-            console.error('Remote Playback API gagal:', error);
+            toast({ title: '✅ Cast Video berhasil dimulai.' });
+
+            // Optional: display stream in a local video element for preview
+            // const videoElem = document.createElement("video");
+            // videoElem.srcObject = displayStream;
+            // videoElem.play();
+
+          } catch (err) {
+            console.error("❌ Gagal memulai Cast Video:", err);
+            toast({ variant: 'destructive', title: 'Gagal Memulai Cast', description: 'Pastikan browser mendukung fitur screen capture.' });
             stopSession(false);
-            toast({ variant: 'destructive', title: 'Cast Gagal', description: 'Gagal memulai sesi cast video.' });
           }
-        } else {
-            onNoMiracastDevice?.();
-            console.warn('Remote Playback API tidak didukung.');
-            stopSession(false);
-        }
         break;
     }
-  }, [environment, status, onNoMiracastDevice, toast, stopSession]);
+  }, [environment, status, toast, stopSession]);
 
   const startMirror = useCallback(async () => {
     if (status === 'connected') return;
