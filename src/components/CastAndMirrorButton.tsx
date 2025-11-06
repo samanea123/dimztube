@@ -6,10 +6,11 @@ import { Cast, Monitor, MonitorSmartphone, Tv, X } from 'lucide-react';
 import { useCastManager } from '@/lib/useCastManager';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function CastAndMirrorButton() {
   const { toast } = useToast();
-  const { status, mode, startMiracast, startMirror, stopSession, startAutoCast } = useCastManager();
+  const { status, mode, startMiracast, stopSession, startAutoCast } = useCastManager();
 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,14 +27,9 @@ export default function CastAndMirrorButton() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [containerRef]);
 
-  const handleMiracast = () => {
+  const handleAutoCast = () => {
     setIsOpen(false);
-    startMiracast();
-  };
-
-  const handleMirror = () => {
-    setIsOpen(false);
-    startAutoCast(); // Use auto cast flow
+    startAutoCast();
   };
   
   const handleToggle = () => {
@@ -52,9 +48,7 @@ export default function CastAndMirrorButton() {
         onClick={() => stopSession()}
         className={cn(
           'hover:text-white',
-          mode === 'miracast' && 'bg-green-600 text-white hover:bg-green-700',
-          mode === 'mirror' && 'bg-blue-600 text-white hover:bg-blue-700',
-          mode === 'chromecast' && 'bg-purple-600 text-white hover:bg-purple-700'
+          'bg-blue-600 text-white hover:bg-blue-700'
         )}
         aria-label="Stop Session"
         title={mode === 'mirror' ? 'Hentikan Mirror' : 'Hentikan Cast'}
@@ -77,11 +71,11 @@ export default function CastAndMirrorButton() {
         </Button>
       
         {isOpen && (
-             <div className="absolute top-full right-0 mt-2 w-64 bg-card rounded-xl shadow-lg border p-2 z-[9999] animate-fadeIn">
+             <div className="absolute top-full right-0 mt-2 w-72 bg-card rounded-xl shadow-lg border p-2 z-[9999] animate-fadeIn">
                 <div className="space-y-2 mb-2 p-2">
                     <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
                     <p className="text-sm text-muted-foreground">
-                    Pilih mode untuk menampilkan konten.
+                    Pilih mode untuk menampilkan konten ke layar lebar.
                     </p>
                 </div>
                 <div className="grid gap-1">
@@ -91,19 +85,22 @@ export default function CastAndMirrorButton() {
                         <google-cast-launcher class="cast-button-in-popover" />
                     </div>
                     
-                    <button
-                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
-                        onClick={handleMiracast}
-                    >
-                       <MonitorSmartphone className="mr-2 h-4 w-4" />
-                        Cast Video (Layar)
-                    </button>
+                    <Link href="/cast/receiver" target="_blank" className="w-full">
+                        <button
+                            className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
+                            onClick={() => setIsOpen(false)}
+                        >
+                           <MonitorSmartphone className="mr-2 h-4 w-4" />
+                            Cast Video (WebRTC)
+                        </button>
+                    </Link>
+
                     <button
                         className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted mt-1"
-                        onClick={handleMirror}
+                        onClick={handleAutoCast}
                     >
                         <Monitor className="mr-2 h-4 w-4" />
-                        Mirror Tampilan (Auto Detect)
+                        Mirror Tampilan Penuh (Auto)
                     </button>
 
                     <Button variant="outline" size="sm" className="mt-2" onClick={() => setIsOpen(false)}>Batal</Button>
