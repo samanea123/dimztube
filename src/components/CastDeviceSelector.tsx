@@ -32,7 +32,7 @@ export default function CastDeviceSelector({ isOpen, onOpenChange, onSelectDevic
             setDevices([]);
 
             const videoEl = document.createElement('video');
-            const isSupported = 'remote' in videoEl;
+            const isSupported = 'remote' in videoEl && window.isSecureContext;
             setIsBrowserSupported(isSupported);
 
             if (!isSupported) {
@@ -43,6 +43,7 @@ export default function CastDeviceSelector({ isOpen, onOpenChange, onSelectDevic
             // Simulasi deteksi perangkat
             const timer = setTimeout(() => {
                 setIsDetecting(false);
+                // Jika API didukung, selalu tampilkan perangkat simulasi
                 setDevices(SIMULATED_DEVICES);
             }, 1500);
 
@@ -71,9 +72,9 @@ export default function CastDeviceSelector({ isOpen, onOpenChange, onSelectDevic
                                 Mendeteksi perangkat...
                              </div>
                         )}
-                        {!isBrowserSupported && (
+                        {!isBrowserSupported && !isDetecting && (
                              <div className="text-destructive text-center p-4">
-                                Browser ini belum sepenuhnya mendukung fitur cast.
+                                Browser ini belum mendukung fitur Miracast atau halaman tidak aman (non-HTTPS).
                              </div>
                         )}
                         {!isDetecting && isBrowserSupported && devices.length === 0 && (

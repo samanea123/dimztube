@@ -96,7 +96,7 @@ export function useCastManager() {
         toast({
             variant: 'destructive',
             title: 'Fitur Tidak Didukung',
-            description: 'Browser ini tidak mendukung standar Miracast (Remote Playback API). Mencoba mode mirror.'
+            description: 'Browser ini belum mendukung standar Miracast (Remote Playback API).'
         });
         return false;
     }
@@ -150,6 +150,7 @@ export function useCastManager() {
             return true;
         }
 
+        // Fallback to mirroring if miracast is not used or fails
         setStream(displayStream);
         displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
 
@@ -169,7 +170,7 @@ export function useCastManager() {
   };
 
 
-  const startMirror = useCallback(async () => {
+  const startAutoCast = useCallback(async () => {
     if (status === 'connected') {
        toast({
             variant: 'destructive',
@@ -205,27 +206,18 @@ export function useCastManager() {
         return true;
       default:
         const success = await handleDisplayMedia();
-        if (success && mode !== 'miracast') {
-            setStatus('connected');
-            setMode('mirror');
-            toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
-        } else if (!success) {
+        if (success) {
+            if (mode !== 'miracast') { // if miracast already set the mode, don't override
+                setStatus('connected');
+                setMode('mirror');
+                toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
+            }
+        } else {
             setStatus('disconnected');
         }
         return success;
     }
   }, [environment, status, toast, mode]);
-
-  const startAutoCast = async () => {
-    const { id: toastId, update } = toast({
-      title: "🔍 Mendeteksi perangkat cast...",
-      description: "Mempersiapkan sesi mirror/cast.",
-    });
-
-    await startMirror();
-
-    setTimeout(() => update({ id: toastId, open: false }), 2500);
-  };
 
 
   useEffect(() => {
@@ -282,5 +274,5 @@ export function useCastManager() {
 
   }, [stopSession]);
 
-  return { status, mode, deviceName, startMirror, stopSession, startAutoCast };
+  return { status, mode, deviceName, startAutoCast, stopSession };
 }

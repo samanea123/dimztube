@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Cast, Monitor, MonitorSmartphone, X } from 'lucide-react';
+import { Cast, MonitorSmartphone, X } from 'lucide-react';
 import { useCastManager } from '@/lib/useCastManager';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -26,11 +26,6 @@ export default function CastAndMirrorButton() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [containerRef]);
-
-  const handleAutoCast = () => {
-    setIsMenuOpen(false);
-    startAutoCast();
-  };
   
   const handleToggle = () => {
       if (isActive) {
@@ -48,7 +43,7 @@ export default function CastAndMirrorButton() {
         onClick={() => stopSession()}
         className={cn(
           'hover:text-white',
-          'bg-blue-600 text-white hover:bg-blue-700'
+          'bg-sky-500 text-white hover:bg-sky-600'
         )}
         aria-label="Stop Session"
         title={mode === 'mirror' ? 'Hentikan Mirror' : 'Hentikan Cast'}
@@ -79,8 +74,7 @@ export default function CastAndMirrorButton() {
                     </p>
                 </div>
                 <div className="grid gap-1">
-                    {/* Tombol Chromecast bawaan */}
-                     <button
+                    <button
                         className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
                         onClick={() => {
                           setIsSelectorOpen(true);
@@ -88,7 +82,7 @@ export default function CastAndMirrorButton() {
                         }}
                     >
                        <Cast className="mr-2 h-4 w-4" />
-                        Sambungkan ke TV
+                        Sambungkan ke TV (Chromecast)
                     </button>
                     
                     <Link href="/cast/receiver" target="_blank" className="w-full">
