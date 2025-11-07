@@ -93,27 +93,35 @@ export function useCastManager() {
   
   const handleRemotePlayback = async (videoElement: HTMLVideoElement): Promise<boolean> => {
     if (!('remote' in videoElement)) {
-        return false; // API not supported
+        toast({
+            variant: 'destructive',
+            title: 'Fitur Tidak Didukung',
+            description: 'Browser ini tidak mendukung standar Miracast (Remote Playback API). Mencoba mode mirror.'
+        });
+        return false;
     }
     try {
         await videoElement.remote.prompt();
-        // If successful, the browser takes over. We can't know for sure it connected,
-        // but the user initiated the action. We'll treat this as a success for now.
         toast({
             title: "Memulai Cast",
             description: "Pilih perangkat dari daftar untuk memulai."
         });
-        setStatus('connected'); // Optimistically set status
+        setStatus('connected');
         setMode('miracast');
         setDeviceName('Perangkat Remote');
         await acquireWakeLock();
         return true;
     } catch (error: any) {
         if (error.name === 'NotSupportedError') {
+             toast({
+                variant: 'destructive',
+                title: 'Fitur Tidak Didukung',
+                description: 'Tidak ditemukan perangkat yang kompatibel untuk Miracast.'
+            });
             return false;
         }
-        console.warn("Gagal memulai Remote Playback:", error);
-        return false; // User likely cancelled
+        console.warn("Gagal memulai Remote Playback, kemungkinan dibatalkan pengguna:", error);
+        return false;
     }
   };
 
@@ -130,21 +138,18 @@ export function useCastManager() {
     try {
         const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         
-        // Create a dummy video element to attach stream and try Remote Playback
         const dummyVideo = document.createElement('video');
         dummyVideo.srcObject = displayStream;
         dummyVideo.muted = true;
-        dummyVideo.play().catch(()=>{}); // Play must be attempted
+        await dummyVideo.play().catch(()=>{}); 
         videoRef.current = dummyVideo;
 
-        // Try Remote Playback API first
         const casted = await handleRemotePlayback(dummyVideo);
         if (casted) {
-            setStream(displayStream); // Keep stream alive
+            setStream(displayStream);
             return true;
         }
 
-        // Fallback to regular mirroring
         setStream(displayStream);
         displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
 
@@ -174,6 +179,15 @@ export function useCastManager() {
         return false;
     }
 
+    if (!window.isSecureContext) {
+        toast({
+            variant: 'destructive',
+            title: 'Koneksi Tidak Aman',
+            description: 'Fitur cast dan mirror memerlukan koneksi HTTPS.'
+        });
+        return false;
+    }
+
     setStatus('connecting');
 
     switch (environment) {
@@ -191,7 +205,7 @@ export function useCastManager() {
         return true;
       default:
         const success = await handleDisplayMedia();
-        if (success && mode !== 'miracast') { // only update if not already handled by miracast
+        if (success && mode !== 'miracast') {
             setStatus('connected');
             setMode('mirror');
             toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
@@ -208,13 +222,9 @@ export function useCastManager() {
       description: "Mempersiapkan sesi mirror/cast.",
     });
 
-    // Start the mirror/cast process
-    const success = await startMirror();
+    await startMirror();
 
-    // The startMirror function now contains the logic to attempt cast then fallback to mirror.
-    // It also provides its own toasts for success or failure.
-    // So we can just hide the initial discovery toast.
-    setTimeout(() => update({ id: toastId, open: false }), 1500);
+    setTimeout(() => update({ id: toastId, open: false }), 2500);
   };
 
 

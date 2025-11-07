@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Cast, Monitor, MonitorSmartphone, Tv, X } from 'lucide-react';
+import { Cast, Monitor, MonitorSmartphone, X } from 'lucide-react';
 import { useCastManager } from '@/lib/useCastManager';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +81,7 @@ export default function CastAndMirrorButton() {
                 <div className="grid gap-1">
                     {/* Tombol Chromecast bawaan */}
                     <div className="flex items-center gap-2 hover:bg-muted p-2 rounded-md cursor-pointer">
-                        <Tv className="mr-2 h-4 w-4" />
+                        <Cast className="mr-2 h-4 w-4" />
                         <google-cast-launcher class="cast-button-in-popover" />
                     </div>
                     
