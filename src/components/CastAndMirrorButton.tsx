@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Cast, Monitor, MonitorSmartphone, X } from 'lucide-react';
 import { useCastManager } from '@/lib/useCastManager';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import CastDeviceSelector from './CastDeviceSelector';
 
 export default function CastAndMirrorButton() {
-  const { toast } = useToast();
   const { status, mode, stopSession, startAutoCast } = useCastManager();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const isActive = status === 'connected';
@@ -20,7 +20,7 @@ export default function CastAndMirrorButton() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        setIsMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -28,7 +28,7 @@ export default function CastAndMirrorButton() {
   }, [containerRef]);
 
   const handleAutoCast = () => {
-    setIsOpen(false);
+    setIsMenuOpen(false);
     startAutoCast();
   };
   
@@ -36,7 +36,7 @@ export default function CastAndMirrorButton() {
       if (isActive) {
           stopSession();
       } else {
-          setIsOpen(!isOpen);
+          setIsMenuOpen(!isMenuOpen);
       }
   }
 
@@ -70,7 +70,7 @@ export default function CastAndMirrorButton() {
           <Cast className="h-5 w-5" />
         </Button>
       
-        {isOpen && (
+        {isMenuOpen && (
              <div className="absolute top-full right-0 mt-2 w-72 bg-card rounded-xl shadow-lg border p-2 z-[9999] animate-fadeIn">
                 <div className="space-y-2 mb-2 p-2">
                     <h4 className="font-medium leading-none">Sambungkan ke perangkat</h4>
@@ -80,33 +80,40 @@ export default function CastAndMirrorButton() {
                 </div>
                 <div className="grid gap-1">
                     {/* Tombol Chromecast bawaan */}
-                    <div className="flex items-center gap-2 hover:bg-muted p-2 rounded-md cursor-pointer">
-                        <Cast className="mr-2 h-4 w-4" />
-                        <google-cast-launcher class="cast-button-in-popover" />
-                    </div>
+                     <button
+                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
+                        onClick={() => {
+                          setIsSelectorOpen(true);
+                          setIsMenuOpen(false);
+                        }}
+                    >
+                       <Cast className="mr-2 h-4 w-4" />
+                        Sambungkan ke TV
+                    </button>
                     
                     <Link href="/cast/receiver" target="_blank" className="w-full">
                         <button
                             className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => setIsMenuOpen(false)}
                         >
                            <MonitorSmartphone className="mr-2 h-4 w-4" />
-                            Cast Video (WebRTC)
+                            Cast via Kode QR (WebRTC)
                         </button>
                     </Link>
 
-                    <button
-                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted mt-1"
-                        onClick={handleAutoCast}
-                    >
-                        <Monitor className="mr-2 h-4 w-4" />
-                        Mirror/Cast Tampilan (Auto)
-                    </button>
-
-                    <Button variant="outline" size="sm" className="mt-2" onClick={() => setIsOpen(false)}>Batal</Button>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={() => setIsMenuOpen(false)}>Batal</Button>
                 </div>
              </div>
         )}
+        
+        <CastDeviceSelector
+          isOpen={isSelectorOpen}
+          onOpenChange={setIsSelectorOpen}
+          onSelectDevice={() => {
+              setIsSelectorOpen(false);
+              startAutoCast();
+          }}
+        />
     </div>
   );
 }
