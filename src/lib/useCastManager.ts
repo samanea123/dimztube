@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 // Type definitions for potential native interfaces
@@ -20,6 +20,11 @@ declare global {
     chrome?: any;
     __onGCastApiAvailable?: (isAvailable: boolean) => void;
   }
+  interface HTMLMediaElement {
+    remote?: {
+      prompt: () => Promise<void>;
+    }
+  }
 }
 
 type CastStatus = 'disconnected' | 'connecting' | 'connected';
@@ -34,6 +39,8 @@ export function useCastManager() {
   const [wakeLock, setWakeLock] = useState<any | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [deviceName, setDeviceName] = useState<string>('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
 
   useEffect(() => {
     const ua = navigator.userAgent;
@@ -60,13 +67,15 @@ export function useCastManager() {
     setWakeLock(null);
     stream?.getTracks().forEach(track => track.stop());
     setStream(null);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   }, [wakeLock, stream]);
 
   const stopSession = useCallback((showAlert = true) => {
     if (environment === 'android') window.AndroidInterface?.stopSession();
     if (environment === 'electron') window.electronAPI?.stopSession();
 
-    // Stop Chromecast session
     const castSession = window.cast?.framework?.CastContext.getInstance().getCurrentSession();
     if (castSession) {
       castSession.endSession(true);
@@ -81,6 +90,32 @@ export function useCastManager() {
         toast({ title: '🛑 Sesi Cast/Mirror Dihentikan' });
     }
   }, [environment, releaseWakeLock, toast]);
+  
+  const handleRemotePlayback = async (videoElement: HTMLVideoElement): Promise<boolean> => {
+    if (!('remote' in videoElement)) {
+        return false; // API not supported
+    }
+    try {
+        await videoElement.remote.prompt();
+        // If successful, the browser takes over. We can't know for sure it connected,
+        // but the user initiated the action. We'll treat this as a success for now.
+        toast({
+            title: "Memulai Cast",
+            description: "Pilih perangkat dari daftar untuk memulai."
+        });
+        setStatus('connected'); // Optimistically set status
+        setMode('miracast');
+        setDeviceName('Perangkat Remote');
+        await acquireWakeLock();
+        return true;
+    } catch (error: any) {
+        if (error.name === 'NotSupportedError') {
+            return false;
+        }
+        console.warn("Gagal memulai Remote Playback:", error);
+        return false; // User likely cancelled
+    }
+  };
 
   const handleDisplayMedia = async () => {
     if (!('getDisplayMedia' in navigator.mediaDevices)) {
@@ -94,8 +129,23 @@ export function useCastManager() {
     
     try {
         const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        setStream(displayStream);
         
+        // Create a dummy video element to attach stream and try Remote Playback
+        const dummyVideo = document.createElement('video');
+        dummyVideo.srcObject = displayStream;
+        dummyVideo.muted = true;
+        dummyVideo.play().catch(()=>{}); // Play must be attempted
+        videoRef.current = dummyVideo;
+
+        // Try Remote Playback API first
+        const casted = await handleRemotePlayback(dummyVideo);
+        if (casted) {
+            setStream(displayStream); // Keep stream alive
+            return true;
+        }
+
+        // Fallback to regular mirroring
+        setStream(displayStream);
         displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
 
         setDeviceName('Layar yang Dibagikan');
@@ -113,43 +163,6 @@ export function useCastManager() {
     }
   };
 
-  const startMiracast = useCallback(async () => {
-    if (status === 'connected') {
-        toast({
-            variant: 'destructive',
-            title: 'Sesi Aktif',
-            description: 'Matikan sesi Mirror atau Cast yang sedang berjalan terlebih dahulu.',
-        });
-        return;
-    }
-
-    setStatus('connecting');
-
-    switch (environment) {
-      case 'android':
-        window.AndroidInterface?.startMiracast('');
-        setDeviceName('Perangkat Android');
-        setStatus('connected');
-        setMode('miracast');
-        break;
-      case 'electron':
-        window.electronAPI?.startCast('');
-        setDeviceName('Perangkat Windows');
-        setStatus('connected');
-        setMode('miracast');
-        break;
-      default:
-        const success = await handleDisplayMedia();
-        if (success) {
-            setStatus('connected');
-            setMode('miracast');
-            toast({ title: '✅ Cast Video berhasil dimulai.' });
-        } else {
-            setStatus('disconnected');
-        }
-        break;
-    }
-  }, [environment, status, toast]);
 
   const startMirror = useCallback(async () => {
     if (status === 'connected') {
@@ -178,53 +191,30 @@ export function useCastManager() {
         return true;
       default:
         const success = await handleDisplayMedia();
-        if (success) {
+        if (success && mode !== 'miracast') { // only update if not already handled by miracast
             setStatus('connected');
             setMode('mirror');
             toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
-        } else {
+        } else if (!success) {
             setStatus('disconnected');
         }
         return success;
     }
-  }, [environment, status, toast]);
+  }, [environment, status, toast, mode]);
 
   const startAutoCast = async () => {
     const { id: toastId, update } = toast({
-      title: "🔍 Mendeteksi TV terdekat...",
+      title: "🔍 Mendeteksi perangkat cast...",
+      description: "Mempersiapkan sesi mirror/cast.",
     });
-  
-    try {
-      // Simulate device discovery
-      const fakeDiscovery = await new Promise((resolve) => {
-        setTimeout(() => resolve("Android TV Living Room"), 2000);
-      });
-  
-      update({
-        id: toastId,
-        title: `📺 ${fakeDiscovery} ditemukan!`,
-        description: "Mencoba menghubungkan...",
-      });
-  
-      // Proceed with mirroring
-      const success = await startMirror();
-  
-      // If startMirror fails (e.g., user cancels), the toast inside startMirror will handle it.
-      // If it succeeds, the CastStatusIndicator will show the final status.
-      if (success) {
-         setTimeout(() => update({ id: toastId, open: false }), 1000); // Hide discovery toast
-      }
-      
-    } catch (err) {
-      console.error("❌ Gagal auto-cast:", err);
-      update({
-        id: toastId,
-        variant: "destructive",
-        title: "❌ Gagal menemukan perangkat TV",
-        description: "Mirror manual akan dijalankan.",
-      });
-      setTimeout(() => startMirror(), 2000);
-    }
+
+    // Start the mirror/cast process
+    const success = await startMirror();
+
+    // The startMirror function now contains the logic to attempt cast then fallback to mirror.
+    // It also provides its own toasts for success or failure.
+    // So we can just hide the initial discovery toast.
+    setTimeout(() => update({ id: toastId, open: false }), 1500);
   };
 
 
@@ -243,7 +233,6 @@ export function useCastManager() {
       }
     };
     
-    // Check if the Cast SDK is already available
     if (window.cast && window.cast.framework) {
         const castContext = window.cast.framework.CastContext.getInstance();
         castContext.setOptions({
@@ -255,7 +244,6 @@ export function useCastManager() {
             handleCastStateChange
         );
     } else {
-        // Otherwise, wait for the API to become available
         window['__onGCastApiAvailable'] = (isAvailable) => {
             if(isAvailable) {
                 const castContext = window.cast.framework.CastContext.getInstance();
@@ -272,7 +260,6 @@ export function useCastManager() {
     }
 
 
-    // Clean up on unmount
     return () => {
         const castContext = window.cast?.framework?.CastContext.getInstance();
         if (castContext) {
@@ -285,5 +272,5 @@ export function useCastManager() {
 
   }, [stopSession]);
 
-  return { status, mode, deviceName, startMiracast, startMirror, stopSession, startAutoCast };
+  return { status, mode, deviceName, startMirror, stopSession, startAutoCast };
 }
