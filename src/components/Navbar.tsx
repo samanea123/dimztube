@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
-import { RefreshCcw, Bell } from "lucide-react";
-import Link from "next/link";
-import Logo from "./logo";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import type { VideoItem as SearchVideoItem } from "./SearchBar";
-import SearchBar from "./SearchBar";
-import { Button } from "./ui/button";
-import CastAndMirrorButton from "./CastAndMirrorButton";
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { RefreshCcw, Bell } from 'lucide-react';
+import Link from 'next/link';
+import Logo from './logo';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import type { VideoItem as SearchVideoItem } from './SearchBar';
+import SearchBar from './SearchBar';
+import { Button } from './ui/button';
+import CastAndMirrorButton from './CastAndMirrorButton';
 
 const CUSTOM_AVATAR_KEY = 'dimztubeCustomAvatar';
 
@@ -20,9 +20,15 @@ interface NavbarProps {
   onSelectVideo?: (video: SearchVideoItem) => void;
 }
 
-export default function Navbar({ onReload, category, onSelectVideo }: NavbarProps) {
+export default function Navbar({
+  onReload,
+  category,
+  onSelectVideo,
+}: NavbarProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
-  const defaultAvatar = PlaceHolderImages.find(img => img.id === 'avatar1')?.imageUrl;
+  const defaultAvatar = PlaceHolderImages.find(
+    (img) => img.id === 'avatar1'
+  )?.imageUrl;
 
   useEffect(() => {
     // Function to update avatar from localStorage
@@ -41,17 +47,18 @@ export default function Navbar({ onReload, category, onSelectVideo }: NavbarProp
     };
   }, [defaultAvatar]);
 
-
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4">
       <div className="flex items-center gap-2">
         <Link href="/" className="flex items-center gap-2">
           <Logo />
-          <span className="font-bold text-lg hidden sm:inline-block">DimzTube</span>
+          <span className="font-bold text-lg hidden sm:inline-block">
+            DimzTube
+          </span>
         </Link>
       </div>
 
-      <div className="flex-1 flex justify-center px-0 sm:px-4">
+      <div className="flex-1 flex justify-center px-0 sm:px-4 min-w-0">
         <SearchBar category={category} onSelect={onSelectVideo} />
       </div>
 
@@ -66,10 +73,10 @@ export default function Navbar({ onReload, category, onSelectVideo }: NavbarProp
         >
           <RefreshCcw className="h-5 w-5" />
         </Button>
-        
+
         <CastAndMirrorButton />
-        
-        <Button variant="ghost" size="icon" className="flex">
+
+        <Button variant="ghost" size="icon" className="flex-shrink-0">
           <Bell className="h-5 w-5" />
         </Button>
 
