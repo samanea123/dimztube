@@ -19,6 +19,8 @@ declare global {
     cast?: any;
     chrome?: any;
     __onGCastApiAvailable?: (isAvailable: boolean) => void;
+    isSecureContext: boolean;
+    presentation?: any;
   }
   interface HTMLMediaElement {
     remote?: {
@@ -94,38 +96,52 @@ export function useCastManager() {
   }, [environment, releaseWakeLock, toast]);
   
   const handleRemotePlayback = async (videoElement: HTMLVideoElement): Promise<boolean> => {
-    if (!('remote' in videoElement)) {
-        toast({
-            variant: 'destructive',
-            title: 'Fitur Tidak Didukung',
-            description: 'Browser ini belum mendukung standar Miracast (Remote Playback API).'
-        });
-        return false;
-    }
-    try {
-        await videoElement.remote.prompt();
-        toast({
-            title: "Memulai Cast",
-            description: "Pilih perangkat dari daftar untuk memulai."
-        });
-        setStatus('connected');
-        setMode('miracast');
-        setDeviceName('Perangkat Remote');
-        await acquireWakeLock();
-        return true;
-    } catch (error: any) {
-        if (error.name === 'NotSupportedError') {
-             toast({
-                variant: 'destructive',
-                title: 'Fitur Tidak Didukung',
-                description: 'Tidak ditemukan perangkat yang kompatibel untuk Miracast.'
-            });
-            return false;
+    let availabilityId: number | undefined;
+    return new Promise((resolve) => {
+        if (!('remote' in videoElement)) {
+            resolve(false);
+            return;
         }
-        console.warn("Gagal memulai Remote Playback, kemungkinan dibatalkan pengguna:", error);
-        return false;
-    }
-  };
+
+        const handleAvailabilityChange = (available: boolean) => {
+            if (availabilityId) {
+                videoElement.remote?.cancelWatchAvailability(availabilityId);
+            }
+            if (available) {
+                videoElement.remote.prompt()
+                    .then(() => {
+                        toast({ title: "Memulai Cast", description: "Pilih perangkat dari daftar untuk memulai." });
+                        setStatus('connected');
+                        setMode('miracast');
+                        setDeviceName('Perangkat Remote');
+                        acquireWakeLock();
+                        resolve(true);
+                    })
+                    .catch((error) => {
+                        if (error.name !== 'AbortError') {
+                            console.warn("Gagal memulai Remote Playback:", error);
+                        }
+                        resolve(false);
+                    });
+            } else {
+                 toast({ variant: 'destructive', title: 'Perangkat Tidak Ditemukan', description: 'Tidak ada perangkat cast yang ditemukan di jaringan Anda.' });
+                 resolve(false);
+            }
+        };
+
+        videoElement.remote.watchAvailability(handleAvailabilityChange)
+            .then(id => { availabilityId = id; })
+            .catch(() => { resolve(false); });
+        
+         // Timeout if no device is found after a while
+        setTimeout(() => {
+            if (availabilityId) {
+                videoElement.remote?.cancelWatchAvailability(availabilityId);
+            }
+            resolve(false);
+        }, 8000); // 8 seconds timeout
+    });
+};
 
   const handleDisplayMedia = async () => {
     if (!('getDisplayMedia' in navigator.mediaDevices)) {
@@ -143,21 +159,18 @@ export function useCastManager() {
         const dummyVideo = document.createElement('video');
         dummyVideo.srcObject = displayStream;
         dummyVideo.muted = true;
+        dummyVideo.playsInline = true;
         await dummyVideo.play().catch(()=>{}); 
         videoRef.current = dummyVideo;
 
         // Try Remote Playback (Miracast) first
-        if ('remote' in dummyVideo) {
-            const casted = await handleRemotePlayback(dummyVideo);
-            if (casted) {
-                setStream(displayStream);
-                // The `handleRemotePlayback` function will set the mode and status
-                return true;
-            }
-             // If user cancels or it fails, we fall through to mirroring.
+        const casted = await handleRemotePlayback(dummyVideo);
+        if (casted) {
+            setStream(displayStream);
+            return true;
         }
 
-        // Fallback to full screen mirroring if Miracast isn't supported or used
+        // Fallback to full screen mirroring
         setStream(displayStream);
         displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
         

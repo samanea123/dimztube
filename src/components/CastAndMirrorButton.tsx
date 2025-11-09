@@ -35,9 +35,9 @@ export default function CastAndMirrorButton() {
       }
   }
   
-  const handleAutoCast = () => {
+  const handleStartCast = () => {
     setIsMenuOpen(false);
-    startAutoCast();
+    setIsSelectorOpen(true);
   }
 
   if (isActive) {
@@ -80,21 +80,10 @@ export default function CastAndMirrorButton() {
                 <div className="grid gap-1">
                     <button
                         className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
-                        onClick={() => {
-                          setIsSelectorOpen(true);
-                          setIsMenuOpen(false);
-                        }}
+                        onClick={handleStartCast}
                     >
                        <Cast className="mr-2 h-4 w-4" />
                         Sambungkan ke TV (Chromecast)
-                    </button>
-                    
-                    <button
-                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
-                        onClick={handleAutoCast}
-                    >
-                       <MonitorSmartphone className="mr-2 h-4 w-4" />
-                       Mirror/Cast Tampilan (Otomatis)
                     </button>
                     
                     <Link href="/cast/receiver" target="_blank" className="w-full">
@@ -117,8 +106,7 @@ export default function CastAndMirrorButton() {
           onOpenChange={setIsSelectorOpen}
           onSelectDevice={() => {
               setIsSelectorOpen(false);
-              // The original Chromecast button now opens the native dialog
-              window.cast?.framework?.CastContext.getInstance().requestSession();
+              startAutoCast();
           }}
         />
     </div>
