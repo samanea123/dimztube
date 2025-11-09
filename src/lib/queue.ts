@@ -1,6 +1,10 @@
+
 'use client';
 
-import type { VideoItem } from './youtube';
+import type { VideoItem as YouTubeVideoItem } from './youtube';
+
+// The queue uses the same video item definition
+export type VideoItem = YouTubeVideoItem;
 
 const QUEUE_KEY = "dimztubeQueue";
 const SETTINGS_KEY = "dimztubeSettings";

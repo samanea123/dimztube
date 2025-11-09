@@ -1,3 +1,4 @@
+
 'use server';
 
 // 1. Get all API keys from environment variables
@@ -28,12 +29,14 @@ export interface VideoItem {
   title: string;
   thumbnailUrl: string;
   channelTitle: string;
-  channelId?: string; // Made optional as search endpoint doesn't provide it
+  channelId?: string;
   viewCount: string;
   publishedAt: string;
   duration: string; 
   channelAvatarUrl?: string;
   description?: string;
+  tags?: string[];
+  categoryId?: string;
 }
 
 // New response structure that includes monitoring data
@@ -196,7 +199,9 @@ async function processVideoResponse(apiResult: { response: any; usedApiKeyIndex:
                 viewCount: formatViews(item.statistics.viewCount || '0'),
                 publishedAt: formatPublishedAt(item.snippet.publishedAt || ''),
                 duration: formatDuration(item.contentDetails.duration || ''),
-                channelAvatarUrl: channelAvatars.get(item.snippet.channelId || '')
+                channelAvatarUrl: channelAvatars.get(item.snippet.channelId || ''),
+                tags: item.snippet.tags || [],
+                categoryId: item.snippet.categoryId || ''
             });
         }
     }

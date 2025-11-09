@@ -1,9 +1,37 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams }from 'next/navigation';
-import { getQueue, getSettings, setCurrentIndex } from '@/lib/queue';
+import { getQueue, getSettings, setCurrentIndex, type VideoItem } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
+
+function isMusicOrKaraokeVideo(video: VideoItem): boolean {
+  if (!video) return false;
+  
+  const title = (video.title || '').toLowerCase();
+  const tags = (video.tags || []).join(' ').toLowerCase();
+  const categoryId = video.categoryId; // YouTube's category ID for Music is "10"
+
+  if (categoryId === '10') {
+    return true;
+  }
+
+  const musicKeywords = [
+    'music', 'song', 'official', 'track', 'lyric', 'audio', 'sound', 
+    'single', 'album', 'cover', 'remix', 'mv'
+  ];
+
+  const karaokeKeywords = [
+    'karaoke', 'instrumental', 'minus one', 'no vocal', 
+    'sing along', 'backing track'
+  ];
+
+  const isMusic = musicKeywords.some(keyword => title.includes(keyword) || tags.includes(keyword));
+  const isKaraoke = karaokeKeywords.some(keyword => title.includes(keyword) || tags.includes(keyword));
+
+  return isMusic || isKaraoke;
+}
 
 export default function PlayerPage() {
   const params = useParams();
@@ -216,7 +244,12 @@ export default function PlayerPage() {
   }
 
   async function onPlayerReady(event: any) {
-    setupMediaSession();
+    const queue = getQueue();
+    const currentVideo = queue.find(v => v.id === videoId);
+
+    if (currentVideo && isMusicOrKaraokeVideo(currentVideo)) {
+        setupMediaSession();
+    }
 
     const iframe = event.target.getIframe();
     if (iframe && iframe.contentDocument) {
@@ -247,6 +280,10 @@ export default function PlayerPage() {
 
   function onPlayerStateChange(event: any) {
     if (event.data === YT.PlayerState.PLAYING) {
+        // If Media Session is not set up, set it up now
+        if (!navigator.mediaSession.metadata) {
+            setupMediaSession();
+        }
         if (playerRef.current.isMuted()) {
             const unmuteButton = document.getElementById("unmute");
             if (unmuteButton) {
