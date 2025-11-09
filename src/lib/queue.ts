@@ -9,12 +9,46 @@ export type VideoItem = YouTubeVideoItem;
 const QUEUE_KEY = "dimztubeQueue";
 const SETTINGS_KEY = "dimztubeSettings";
 const CURRENT_INDEX_KEY = "dimztubeCurrentIndex";
+const HISTORY_KEY = "dimztubePlayHistory";
 
 function dispatchQueueUpdate() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event("queueUpdated"));
   }
 }
+
+// History Management
+export function savePlayHistory(videoData: VideoItem) {
+  if (typeof window === 'undefined' || !videoData) return;
+  
+  let history: VideoItem[] = getPlayHistory();
+  
+  // Hindari duplikat di awal riwayat
+  if (history.length > 0 && history[0].id === videoData.id) {
+    return;
+  }
+
+  // Tambahkan item baru ke awal
+  history.unshift(videoData);
+
+  // Batasi riwayat hingga 30 item terakhir
+  if (history.length > 30) {
+    history = history.slice(0, 30);
+  }
+  
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+export function getPlayHistory(): VideoItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(history) ? history : [];
+  } catch {
+    return [];
+  }
+}
+
 
 // Queue Management
 export function setQueue(videos: VideoItem[]) {

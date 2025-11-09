@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams }from 'next/navigation';
-import { getQueue, getSettings, setCurrentIndex, type VideoItem } from '@/lib/queue';
+import { getQueue, getSettings, setCurrentIndex, savePlayHistory, type VideoItem } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 import { Music, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -259,6 +259,9 @@ export default function PlayerPage() {
     const currentVideo = queue.find(v => v.id === videoId);
 
     if (currentVideo) {
+        // Simpan ke riwayat pemutaran
+        savePlayHistory(currentVideo);
+        
         const detectedType = isMusicOrKaraokeVideo(currentVideo);
         setMediaType(detectedType);
         if (detectedType) {
@@ -361,4 +364,3 @@ export default function PlayerPage() {
     </>
   );
 }
-
