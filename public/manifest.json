@@ -1,6 +1,11 @@
 {
+  "name": "DimzTube",
   "short_name": "DimzTube",
-  "name": "DimzTube Reimagined",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -18,7 +23,7 @@
       "type": "image/png"
     },
     {
-      "src":": "/icons/icon-144x144.png",
+      "src": "/icons/icon-144x144.png",
       "sizes": "144x144",
       "type": "image/png"
     },
@@ -30,8 +35,7 @@
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/icons/icon-384x384.png",
@@ -44,9 +48,13 @@
       "type": "image/png"
     }
   ],
-  "start_url": "/",
-  "display": "standalone",
-  "theme_color": "#FF0000",
-  "background_color": "#121212",
-  "description": "A YouTube-like responsive web application prototype with background playback and casting."
+  "shortcuts": [
+    {
+      "name": "DimzTube Player",
+      "short_name": "Player",
+      "description": "Buka antrian dan video terakhir",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
 }
