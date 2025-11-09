@@ -7,6 +7,7 @@ import { useCastManager } from '@/lib/useCastManager';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import CastDeviceSelector from './CastDeviceSelector';
+import { startMiracast } from '@/lib/miracast';
 
 export default function CastAndMirrorButton() {
   const { status, mode, stopSession, startAutoCast } = useCastManager();
@@ -80,21 +81,25 @@ export default function CastAndMirrorButton() {
                 <div className="grid gap-1">
                     <button
                         className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
-                        onClick={handleStartCast}
+                        onClick={() => {
+                          startMiracast('cast');
+                          setIsMenuOpen(false);
+                        }}
                     >
                        <Cast className="mr-2 h-4 w-4" />
-                        Sambungkan ke TV (Chromecast)
+                        Sambungkan ke TV (Miracast)
                     </button>
                     
-                    <Link href="/cast/receiver" target="_blank" className="w-full">
-                        <button
-                            className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                           <MonitorSmartphone className="mr-2 h-4 w-4" />
-                            Cast via Kode QR (WebRTC)
-                        </button>
-                    </Link>
+                    <button
+                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
+                        onClick={() => {
+                          startMiracast('mirror');
+                          setIsMenuOpen(false);
+                        }}
+                    >
+                       <MonitorSmartphone className="mr-2 h-4 w-4" />
+                       Mirror Layar (WebRTC)
+                    </button>
 
                     <Button variant="outline" size="sm" className="mt-2" onClick={() => setIsMenuOpen(false)}>Batal</Button>
                 </div>
