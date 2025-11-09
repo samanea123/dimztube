@@ -15,6 +15,19 @@ export default function PlayerPage() {
   const wasPlayingBeforeHidden = useRef(false);
 
   useEffect(() => {
+    // Check for iOS and show a one-time warning toast
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (isIOS) {
+        toast({
+            title: "Fitur Terbatas di iOS",
+            description: "Pemutaran di latar belakang mungkin tidak berfungsi di browser ini. Gunakan aplikasi untuk pengalaman penuh.",
+            duration: 5000,
+        });
+    }
+  }, [toast]);
+
+
+  useEffect(() => {
     const handleVisibilityChange = () => {
       const player = playerRef.current;
       if (!player) return;
@@ -239,9 +252,6 @@ export default function PlayerPage() {
             if (unmuteButton) {
                 unmuteButton.style.display = "block";
             }
-        } else if (isAutoplay && !wasPlayingBeforeHidden.current) {
-            // Only toast if it's an autoplay session and not returning from background
-            // toast({ title: "🎧 Pemutaran di background aktif" });
         }
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = "playing";
