@@ -13,14 +13,15 @@ export async function startMiracast(mode: 'cast' | 'mirror') {
     });
 
     const videoEl = document.querySelector('video');
-    if (!videoEl && mode === 'cast') { // Only require video element for cast mode
+    // For cast mode, we must have a video element. For mirror, we don't.
+    if (mode === 'cast' && !videoEl) { 
       alert("Video belum ditemukan di halaman untuk di-cast.");
       return;
     }
 
     let stream: MediaStream;
     if (mode === 'cast' && videoEl) {
-      // @ts-ignore
+      // @ts-ignore - captureStream is widely supported but may not be in all TS defs
       stream = videoEl.captureStream();
     } else {
       stream = await navigator.mediaDevices.getDisplayMedia({
@@ -36,20 +37,16 @@ export async function startMiracast(mode: 'cast' | 'mirror') {
         await addIceCandidate(sessionId, 'sender', event.candidate.toJSON());
       }
     };
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    await updateSession(sessionId, { offer, status: 'connecting' });
-
-    // Open the sender page in a new tab
+    
+    // When the sender page is opened, it will create an offer and update the session.
+    // The receiver page will then respond with an answer.
     const senderUrl = `${window.location.origin}/cast/sender/${sessionId}`;
-    window.open(senderUrl, '_blank');
+    window.open(senderUrl, '_blank', 'noopener,noreferrer');
 
-    alert(`Sesi ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'} dimulai! Pindai QR code di TV Anda.`);
+    alert(`Sesi ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'} dimulai! Buka tab baru dan ikuti instruksi.`);
 
   } catch (err) {
     console.error(err);
-    alert(`❌ Gagal memulai ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'}.`);
+    alert(`❌ Gagal memulai ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'}. Pastikan Anda memberikan izin berbagi layar.`);
   }
 }
