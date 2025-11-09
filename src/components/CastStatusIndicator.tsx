@@ -8,26 +8,25 @@ import { cn } from '@/lib/utils';
 export default function CastStatusIndicator() {
   const { status, mode, deviceName, stopSession } = useCastManager();
 
-  const isCasting = status === 'connected' && (mode === 'miracast' || mode === 'chromecast');
-  const isMirroring = status === 'connected' && mode === 'mirror';
-
   if (status !== 'connected') {
     return null;
   }
   
+  const isCasting = mode === 'miracast' || mode === 'chromecast';
+  const isMirroring = mode === 'mirror';
+  
   const getBackgroundColor = () => {
-    if (mode === 'chromecast') return 'bg-purple-600/20 text-purple-400';
-    if (mode === 'miracast') return 'bg-green-600/20 text-green-500';
-    if (mode === 'mirror') return 'bg-blue-600/20 text-blue-500';
+    if (mode === 'chromecast') return 'bg-purple-600/20 text-purple-400 border-purple-500/50';
+    if (mode === 'miracast') return 'bg-green-600/20 text-green-400 border-green-500/50';
+    if (mode === 'mirror') return 'bg-blue-600/20 text-blue-400 border-blue-500/50';
     return 'bg-card/80';
   }
 
   return (
     <div
       className={cn(
-        'fixed top-16 right-4 z-50 w-72 rounded-xl border bg-card/80 p-3 text-card-foreground shadow-lg backdrop-blur-md animate-in fade-in-0',
-        getBackgroundColor(),
-        'sm:top-4'
+        'fixed top-16 right-4 z-50 w-72 rounded-xl border bg-card/80 p-3 text-card-foreground shadow-lg backdrop-blur-md animate-in fade-in-0 sm:top-4 transition-all duration-300',
+        getBackgroundColor()
       )}
     >
       <div className="flex items-center gap-3">
@@ -43,7 +42,7 @@ export default function CastStatusIndicator() {
             {mode === 'miracast' && 'Miracast aktif'}
             {mode === 'mirror' && 'Mirroring aktif'}
           </p>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs truncate text-current/80">
             {deviceName || (isMirroring ? 'Seluruh layar' : 'Perangkat tidak dikenal')}
           </p>
         </div>

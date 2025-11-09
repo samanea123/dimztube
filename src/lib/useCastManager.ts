@@ -266,6 +266,7 @@ export function useCastManager() {
         setDeviceName(friendlyName);
         localStorage.setItem(LAST_DEVICE_KEY, friendlyName);
         acquireWakeLock();
+        toast({ title: `✅ Terhubung ke ${friendlyName}` });
       } else if (state === 'SESSION_ENDED') {
         stopSession(false);
       }
@@ -308,7 +309,7 @@ export function useCastManager() {
         }
     }
 
-  }, [stopSession]);
+  }, [stopSession, toast]);
 
   return { status, mode, deviceName, startAutoCast, stopSession };
 }
