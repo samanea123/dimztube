@@ -2,7 +2,7 @@
 
 import { useCastManager } from '@/lib/useCastManager';
 import { Button } from './ui/button';
-import { Monitor, Tv, X } from 'lucide-react';
+import { MonitorSmartphone, Tv, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function CastStatusIndicator() {
@@ -35,7 +35,7 @@ export default function CastStatusIndicator() {
           <Tv className={cn("h-5 w-5 flex-shrink-0")} />
         )}
         {isMirroring && (
-          <Monitor className="h-5 w-5 flex-shrink-0" />
+          <MonitorSmartphone className="h-5 w-5 flex-shrink-0" />
         )}
         <div className="flex-1 overflow-hidden">
           <p className="text-sm font-semibold truncate text-foreground">

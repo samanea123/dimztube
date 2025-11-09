@@ -35,6 +35,8 @@ type CastStatus = 'disconnected' | 'connecting' | 'connected';
 type CastMode = 'none' | 'miracast' | 'mirror' | 'chromecast';
 type Environment = 'browser' | 'android' | 'electron' | 'android-tv';
 
+const LAST_DEVICE_KEY = 'lastCastDevice';
+
 export function useCastManager() {
   const { toast } = useToast();
   const [status, setStatus] = useState<CastStatus>('disconnected');
@@ -95,6 +97,7 @@ export function useCastManager() {
     setStatus('disconnected');
     setMode('none');
     setDeviceName('');
+    localStorage.removeItem(LAST_DEVICE_KEY);
 
     if (showAlert) {
         toast({ title: '🛑 Sesi Cast/Mirror Dihentikan' });
@@ -119,7 +122,10 @@ export function useCastManager() {
                         toast({ title: "Memulai Cast", description: "Pilih perangkat dari daftar untuk memulai." });
                         setStatus('connected');
                         setMode('miracast');
-                        setDeviceName('Perangkat Remote');
+                        // Device name for miracast is not available through the API, so we use a generic name
+                        const genericDeviceName = 'Perangkat Miracast';
+                        setDeviceName(genericDeviceName);
+                        localStorage.setItem(LAST_DEVICE_KEY, genericDeviceName);
                         acquireWakeLock();
                         resolve(true);
                     })
@@ -182,7 +188,9 @@ export function useCastManager() {
         
         setStatus('connected');
         setMode('mirror');
-        setDeviceName('Layar yang Dibagikan');
+        const mirrorDeviceName = 'Layar yang Dibagikan';
+        setDeviceName(mirrorDeviceName);
+        localStorage.setItem(LAST_DEVICE_KEY, mirrorDeviceName);
         await acquireWakeLock();
         toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
 
@@ -252,9 +260,11 @@ export function useCastManager() {
       const session = window.cast?.framework?.CastContext.getInstance().getCurrentSession();
 
       if (state === 'SESSION_STARTED' || state === 'SESSION_RESUMED') {
+        const friendlyName = session?.getCastDevice()?.friendlyName || 'Perangkat Chromecast';
         setStatus('connected');
         setMode('chromecast');
-        setDeviceName(session?.getCastDevice()?.friendlyName || 'Perangkat Chromecast');
+        setDeviceName(friendlyName);
+        localStorage.setItem(LAST_DEVICE_KEY, friendlyName);
         acquireWakeLock();
       } else if (state === 'SESSION_ENDED') {
         stopSession(false);
