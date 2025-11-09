@@ -1,10 +1,9 @@
 'use client';
-import { createSession, updateSession, addIceCandidate, onIceCandidate } from './webrtc';
+import { createSession, addIceCandidate } from './webrtc';
 
 export async function startMiracast(mode: 'cast' | 'mirror') {
   try {
-    console.log(`🔌 Memulai ${mode}...`);
-
+    console.log(`🔌 Memulai mode ${mode}...`);
     const sessionId = await createSession();
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -12,41 +11,56 @@ export async function startMiracast(mode: 'cast' | 'mirror') {
       ],
     });
 
+    let stream: MediaStream | null = null;
     const videoEl = document.querySelector('video');
-    // For cast mode, we must have a video element. For mirror, we don't.
-    if (mode === 'cast' && !videoEl) { 
-      alert("Video belum ditemukan di halaman untuk di-cast.");
-      return;
-    }
 
-    let stream: MediaStream;
-    if (mode === 'cast' && videoEl) {
-      // @ts-ignore - captureStream is widely supported but may not be in all TS defs
+    // --- Coba ambil stream berdasarkan mode ---
+    if (mode === 'cast' && videoEl && 'captureStream' in videoEl) {
+      // CAST VIDEO
+      // @ts-ignore
       stream = videoEl.captureStream();
-    } else {
+      console.log('🎥 Menggunakan video.captureStream()');
+    } else if (mode === 'mirror' && navigator.mediaDevices?.getDisplayMedia) {
+      // MIRROR SCREEN
       stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
       });
+      console.log('🪞 Menggunakan getDisplayMedia()');
+    } else {
+      // Fallback: gunakan kamera (bisa di HP)
+      console.warn('⚠️ Browser tidak mendukung mirroring penuh, fallback ke kamera.');
+      if (navigator.mediaDevices?.getUserMedia) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } else {
+        alert('Browser Anda tidak mendukung fitur casting atau mirroring.');
+        return;
+      }
     }
 
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    // --- Tambahkan track ke peer connection ---
+    stream!.getTracks().forEach((track) => pc.addTrack(track, stream!));
 
     pc.onicecandidate = async (event) => {
       if (event.candidate) {
         await addIceCandidate(sessionId, 'sender', event.candidate.toJSON());
       }
     };
-    
-    // When the sender page is opened, it will create an offer and update the session.
-    // The receiver page will then respond with an answer.
+
+    // --- Buka halaman penerima (receiver) ---
     const senderUrl = `${window.location.origin}/cast/sender/${sessionId}`;
     window.open(senderUrl, '_blank', 'noopener,noreferrer');
 
-    alert(`Sesi ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'} dimulai! Buka tab baru dan ikuti instruksi.`);
+    alert(
+      `✅ ${mode === 'cast' ? 'Casting video' : 'Mirroring layar'} dimulai!\n\n` +
+      `ID sesi: ${sessionId}\nBuka tab baru (receiver) untuk melanjutkan.`
+    );
 
   } catch (err) {
-    console.error(err);
-    alert(`❌ Gagal memulai ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'}. Pastikan Anda memberikan izin berbagi layar.`);
+    console.error('❌ Gagal memulai Miracast:', err);
+    alert(
+      `❌ Gagal memulai ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'}.\n\n` +
+      'Pastikan browser Anda mendukung fitur ini dan izin berbagi layar telah diberikan.'
+    );
   }
 }
