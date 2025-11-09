@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { onSessionUpdate, updateSession, servers, addIceCandidate, onIceCandidate } from '@/lib/webrtc';
+import { onSessionUpdate, updateSession, servers, addIceCandidate, onIceCandidate, type PlaybackCommand } from '@/lib/webrtc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Monitor, Phone, Wifi, CheckCircle, XCircle, Loader2 } from 'lucide-react';
@@ -24,6 +24,14 @@ export default function SenderPage() {
   
   const firestore = useFirestore();
 
+  const sendCommand = useCallback((command: Omit<PlaybackCommand, 'ts'>) => {
+      if (status === 'streaming' && sessionId) {
+          updateSession(sessionId, {
+              command: { ...command, ts: Date.now() }
+          });
+      }
+  }, [status, sessionId]);
+
   const stopCasting = async (notify = true) => {
     console.log("Sender: Stop casting pressed.");
     if (streamRef.current) {
@@ -40,13 +48,11 @@ export default function SenderPage() {
     setStatus('disconnected');
     
     if (sessionId) {
-      // Notify receiver that session is over
-      await updateSession(sessionId, { status: 'disconnected' });
+      await updateSession(sessionId, { status: 'disconnected', command: null });
     }
 
     if (notify) {
       toast({ title: '✅ Sesi Cast Dihentikan' });
-      // Close window after a short delay
       setTimeout(() => window.close(), 1500);
     }
   };
@@ -61,7 +67,7 @@ export default function SenderPage() {
       let localStream: MediaStream;
 
       try {
-        localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: true });
         streamRef.current = localStream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStream;
@@ -91,7 +97,7 @@ export default function SenderPage() {
 
       pc.onconnectionstatechange = () => {
           if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-              if (status !== 'disconnected') { // Avoid multiple toasts/actions
+              if (status !== 'disconnected') {
                 stopCasting(true);
               }
           }
@@ -129,10 +135,25 @@ export default function SenderPage() {
          setStatus('failed');
       }
 
-      // Main cleanup function
+      // Add event listeners for playback control
+      const videoEl = localVideoRef.current;
+      const onPlay = () => sendCommand({ type: 'play' });
+      const onPause = () => sendCommand({ type: 'pause' });
+      const onSeeked = () => sendCommand({ type: 'seek', payload: videoEl?.currentTime });
+      const onVolumeChange = () => sendCommand({ type: 'volume', payload: videoEl?.volume });
+
+      videoEl?.addEventListener('play', onPlay);
+      videoEl?.addEventListener('pause', onPause);
+      videoEl?.addEventListener('seeked', onSeeked);
+      videoEl?.addEventListener('volumechange', onVolumeChange);
+
       return () => {
         unsubscribeIce();
         unsubscribeSession();
+        videoEl?.removeEventListener('play', onPlay);
+        videoEl?.removeEventListener('pause', onPause);
+        videoEl?.removeEventListener('seeked', onSeeked);
+        videoEl?.removeEventListener('volumechange', onVolumeChange);
         if (pcRef.current) {
           stopCasting(false);
         }
@@ -141,11 +162,10 @@ export default function SenderPage() {
     
     const cleanupPromise = startCasting();
     
-    // Cleanup on unmount
     return () => {
       cleanupPromise.then(cleanup => cleanup && cleanup());
     }
-  }, [firestore, sessionId]);
+  }, [firestore, sessionId, sendCommand]);
 
 
   const renderStatus = () => {
@@ -189,7 +209,7 @@ export default function SenderPage() {
              </div>
           </CardTitle>
           <CardDescription>
-            Hubungkan perangkat ini ke TV dengan memilih layar atau jendela yang ingin Anda bagikan.
+            Hubungkan perangkat ini ke TV dengan memilih layar atau jendela yang ingin Anda bagikan. Kontrol pemutaran video akan disinkronkan.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">
@@ -206,7 +226,7 @@ export default function SenderPage() {
                 <Button size="lg" onClick={() => window.location.reload()}>Coba Lagi</Button>
             )}
             
-            <video ref={localVideoRef} autoPlay muted playsInline className="mt-6 w-full rounded-lg border bg-black aspect-video" />
+            <video ref={localVideoRef} autoPlay muted playsInline controls className="mt-6 w-full rounded-lg border bg-black aspect-video" />
             <p className="text-xs text-muted-foreground mt-2">ID Sesi: {sessionId}</p>
         </CardContent>
       </Card>

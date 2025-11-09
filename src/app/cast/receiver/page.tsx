@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
-import { createSession, onSessionUpdate, updateSession, addIceCandidate, onIceCandidate, servers } from '@/lib/webrtc';
+import { createSession, onSessionUpdate, updateSession, addIceCandidate, onIceCandidate, servers, type WebRTCSession } from '@/lib/webrtc';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Tv2, ScanLine, CheckCircle, WifiOff, Wifi } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ export default function ReceiverPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const lastCommandTimestamp = useRef(0);
   
   const firestore = useFirestore();
 
@@ -27,7 +28,6 @@ export default function ReceiverPage() {
       pcRef.current.close();
       pcRef.current = null;
     }
-    // Keep sessionId to allow re-connection to the same QR code.
     setStatus('disconnected'); 
     console.log("Receiver: Waiting for new offer...");
   };
@@ -56,7 +56,6 @@ export default function ReceiverPage() {
   useEffect(() => {
     if (!sessionId || !firestore) return;
     
-    // If we are reconnecting, ensure old peer connection is closed.
     if(pcRef.current) {
         pcRef.current.close();
     }
@@ -90,9 +89,14 @@ export default function ReceiverPage() {
        }
     });
 
-    const unsubscribeSession = onSessionUpdate(sessionId, async (session) => {
+    const unsubscribeSession = onSessionUpdate(sessionId, async (session: WebRTCSession | null) => {
+      if (!session) {
+        resetState();
+        return;
+      }
+      
       // Handle explicit disconnect from sender
-      if (session?.status === 'disconnected') {
+      if (session.status === 'disconnected') {
         if (status !== 'disconnected' && status !== 'waiting') {
            resetState();
         }
@@ -100,7 +104,7 @@ export default function ReceiverPage() {
       }
       
       // Handle offer from sender
-      if (session?.offer && pc.signalingState === 'stable') {
+      if (session.offer && pc.signalingState === 'stable') {
         try {
             console.log("Receiver: Offer received. Creating answer...");
             setStatus('connecting');
@@ -116,6 +120,31 @@ export default function ReceiverPage() {
             setStatus('failed');
         }
       }
+
+      // Handle playback commands from sender
+      if (session.command && videoRef.current && session.command.ts > lastCommandTimestamp.current) {
+          lastCommandTimestamp.current = session.command.ts;
+          const { type, payload } = session.command;
+          
+          switch(type) {
+              case 'play':
+                  videoRef.current.play();
+                  break;
+              case 'pause':
+                  videoRef.current.pause();
+                  break;
+              case 'seek':
+                  if (typeof payload === 'number') {
+                      videoRef.current.currentTime = payload;
+                  }
+                  break;
+              case 'volume':
+                  if (typeof payload === 'number') {
+                      videoRef.current.volume = payload;
+                  }
+                  break;
+          }
+      }
     });
 
     // Cleanup on unmount
@@ -126,7 +155,6 @@ export default function ReceiverPage() {
         pcRef.current.close();
       }
        if (sessionId) {
-            // Clean up session on component unmount
             updateSession(sessionId, { status: 'disconnected' });
        }
     };
@@ -156,7 +184,7 @@ export default function ReceiverPage() {
         {/* Status Overlay */}
         <div className={cn(
              "absolute top-5 left-1/2 -translate-x-1/2 z-20 transition-opacity duration-300",
-             status === 'connected' ? "opacity-100" : "opacity-0"
+             status === 'connected' && status !== 'connecting' ? "opacity-100" : "opacity-0"
         )}>
            {renderStatus()}
         </div>

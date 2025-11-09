@@ -9,10 +9,9 @@ import {
   Unsubscribe,
   getFirestore,
   deleteField,
+  FieldValue,
 } from 'firebase/firestore';
 
-// Inisialisasi Firestore di sini karena file ini 'use client'
-// dan mungkin diimpor di tempat yang belum tentu punya akses ke provider.
 let db: any;
 const getDb = () => {
     if (!db) {
@@ -38,11 +37,17 @@ export const servers: RTCConfiguration = {
     iceCandidatePoolSize: 10,
 };
 
+export interface PlaybackCommand {
+    type: 'play' | 'pause' | 'seek' | 'volume';
+    payload?: any;
+    ts: number;
+}
 export interface WebRTCSession {
     id?: string;
     offer?: RTCSessionDescriptionInit;
     answer?: RTCSessionDescriptionInit;
     status?: 'waiting' | 'connecting' | 'connected' | 'disconnected' | 'failed';
+    command?: PlaybackCommand | null;
     createdAt?: number;
 }
 
@@ -55,13 +60,13 @@ export async function createSession(): Promise<string> {
 }
 
 
-export async function updateSession(sessionId: string, data: Partial<WebRTCSession>) {
+export async function updateSession(sessionId: string, data: Partial<Omit<WebRTCSession, 'command'>> & { command?: PlaybackCommand | FieldValue | null }) {
     const docRef = doc(getDb(), 'webrtc_sessions', sessionId);
-    // Use deleteField for properties you want to remove, e.g., offer and answer on disconnect.
-    const finalData = { ...data };
+    const finalData: any = { ...data };
     if (data.status === 'disconnected') {
-      finalData.offer = deleteField() as any;
-      finalData.answer = deleteField() as any;
+      finalData.offer = deleteField();
+      finalData.answer = deleteField();
+      finalData.command = deleteField();
     }
     await updateDoc(docRef, finalData);
 }
