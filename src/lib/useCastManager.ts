@@ -59,16 +59,22 @@ export function useCastManager() {
       try {
         const lock = await (navigator as any).wakeLock.request('screen');
         setWakeLock(lock);
-        lock.addEventListener('release', () => setWakeLock(null));
-      } catch (err) {
-        console.warn('Gagal mengaktifkan Wake Lock:', err);
+        lock.addEventListener('release', () => {
+            console.log('Wake Lock was released');
+            setWakeLock(null)
+        });
+        console.log('Wake Lock acquired');
+      } catch (err: any) {
+        console.warn(`Failed to acquire Wake Lock: ${err.name}, ${err.message}`);
       }
     }
   };
 
   const releaseWakeLock = useCallback(() => {
-    wakeLock?.release();
-    setWakeLock(null);
+    if (wakeLock) {
+        wakeLock.release();
+        setWakeLock(null);
+    }
     stream?.getTracks().forEach(track => track.stop());
     setStream(null);
     if (videoRef.current) {
@@ -221,12 +227,14 @@ export function useCastManager() {
         setDeviceName('Layar Android');
         setStatus('connected');
         setMode('mirror');
+        acquireWakeLock();
         return true;
       case 'electron':
         window.electronAPI?.startMirror();
         setDeviceName('Layar Windows');
         setStatus('connected');
         setMode('mirror');
+        acquireWakeLock();
         return true;
       default:
         const success = await handleDisplayMedia();

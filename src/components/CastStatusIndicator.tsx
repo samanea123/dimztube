@@ -16,9 +16,9 @@ export default function CastStatusIndicator() {
   }
   
   const getBackgroundColor = () => {
-    if (mode === 'chromecast') return 'bg-purple-600/20';
-    if (mode === 'miracast') return 'bg-green-600/20';
-    if (mode === 'mirror') return 'bg-blue-600/20';
+    if (mode === 'chromecast') return 'bg-purple-600/20 text-purple-400';
+    if (mode === 'miracast') return 'bg-green-600/20 text-green-500';
+    if (mode === 'mirror') return 'bg-blue-600/20 text-blue-500';
     return 'bg-card/80';
   }
 
@@ -32,16 +32,16 @@ export default function CastStatusIndicator() {
     >
       <div className="flex items-center gap-3">
         {isCasting && (
-          <Tv className={cn("h-5 w-5 flex-shrink-0", mode === 'chromecast' ? 'text-purple-400' : 'text-green-500')} />
+          <Tv className={cn("h-5 w-5 flex-shrink-0")} />
         )}
         {isMirroring && (
-          <Monitor className="h-5 w-5 flex-shrink-0 text-blue-500" />
+          <Monitor className="h-5 w-5 flex-shrink-0" />
         )}
         <div className="flex-1 overflow-hidden">
-          <p className="text-sm font-semibold truncate">
-            {isCasting && mode === 'chromecast' && 'Casting ke perangkat'}
-            {isCasting && mode === 'miracast' && 'Miracast aktif'}
-            {isMirroring && 'Mirroring aktif'}
+          <p className="text-sm font-semibold truncate text-foreground">
+            {mode === 'chromecast' && 'Casting ke perangkat'}
+            {mode === 'miracast' && 'Miracast aktif'}
+            {mode === 'mirror' && 'Mirroring aktif'}
           </p>
           <p className="text-xs text-muted-foreground truncate">
             {deviceName || (isMirroring ? 'Seluruh layar' : 'Perangkat tidak dikenal')}
@@ -51,7 +51,7 @@ export default function CastStatusIndicator() {
           variant="ghost"
           size="icon"
           onClick={() => stopSession()}
-          className="h-8 w-8 flex-shrink-0"
+          className="h-8 w-8 flex-shrink-0 text-foreground hover:bg-white/20"
           title="Putuskan"
         >
           <X className="h-4 w-4" />
