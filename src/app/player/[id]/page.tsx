@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { getQueue, getSettings, setCurrentIndex, playNext, playPrev } from '@/lib/queue';
+import { useParams, useSearchParams }from 'next/navigation';
+import { getQueue, getSettings, setCurrentIndex } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PlayerPage() {
@@ -10,7 +10,6 @@ export default function PlayerPage() {
   const searchParams = useSearchParams();
   const videoId = params.id as string;
   const playerRef = useRef<any>(null);
-  const videoElementRef = useRef<HTMLElement | null>(null);
   const isAutoplay = searchParams.get('autoplay') === '1';
   const { toast } = useToast();
   const wasPlayingBeforeHidden = useRef(false);
@@ -75,7 +74,7 @@ export default function PlayerPage() {
         }
     }
     
-    if (nextIndex !== -1) {
+    if (nextIndex !== -1 && queue[nextIndex]) {
       setCurrentIndex(nextIndex);
       window.location.href = `/player/${queue[nextIndex].id}?autoplay=1`;
     } else {
@@ -94,8 +93,11 @@ export default function PlayerPage() {
       if (currentIndex === 0 && !settings.repeat) return;
 
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
-      setCurrentIndex(prevIndex);
-      window.location.href = `/player/${queue[prevIndex].id}?autoplay=1`;
+      
+      if (queue[prevIndex]) {
+        setCurrentIndex(prevIndex);
+        window.location.href = `/player/${queue[prevIndex].id}?autoplay=1`;
+      }
   }
 
   const setupMediaSession = () => {
@@ -164,6 +166,11 @@ export default function PlayerPage() {
            videoEl.removeEventListener('leavepictureinpicture', handleLeavePiP);
          }
       }
+      // Clear media session on unmount
+      if ('mediaSession' in navigator) {
+          navigator.mediaSession.metadata = null;
+          navigator.mediaSession.playbackState = 'none';
+      }
     };
   }, [videoId]);
 
@@ -208,7 +215,8 @@ export default function PlayerPage() {
     }
     
     if (isAutoplay) {
-      event.target.playVideo();
+      // Small delay to ensure browser registers the play command reliably
+      setTimeout(() => event.target.playVideo(), 100);
 
       try {
         if (iframe?.requestFullscreen) await iframe.requestFullscreen({ navigationUI: "hide" });
@@ -231,12 +239,9 @@ export default function PlayerPage() {
             if (unmuteButton) {
                 unmuteButton.style.display = "block";
             }
-        } else {
-             if (isAutoplay && !wasPlayingBeforeHidden.current) {
-                toast({
-                    title: "🎧 Pemutaran di background aktif",
-                });
-             }
+        } else if (isAutoplay && !wasPlayingBeforeHidden.current) {
+            // Only toast if it's an autoplay session and not returning from background
+            // toast({ title: "🎧 Pemutaran di background aktif" });
         }
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = "playing";
