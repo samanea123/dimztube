@@ -5,16 +5,29 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams }from 'next/navigation';
 import { getQueue, getSettings, setCurrentIndex, type VideoItem } from '@/lib/queue';
 import { useToast } from '@/hooks/use-toast';
+import { Music, Mic } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-function isMusicOrKaraokeVideo(video: VideoItem): boolean {
-  if (!video) return false;
+type MediaType = 'music' | 'karaoke' | null;
+
+function isMusicOrKaraokeVideo(video: VideoItem): MediaType {
+  if (!video) return null;
   
   const title = (video.title || '').toLowerCase();
   const tags = (video.tags || []).join(' ').toLowerCase();
   const categoryId = video.categoryId; // YouTube's category ID for Music is "10"
 
+  const karaokeKeywords = [
+    'karaoke', 'instrumental', 'minus one', 'no vocal', 
+    'sing along', 'backing track'
+  ];
+
+  if (karaokeKeywords.some(keyword => title.includes(keyword) || tags.includes(keyword))) {
+    return 'karaoke';
+  }
+  
   if (categoryId === '10') {
-    return true;
+    return 'music';
   }
 
   const musicKeywords = [
@@ -22,15 +35,11 @@ function isMusicOrKaraokeVideo(video: VideoItem): boolean {
     'single', 'album', 'cover', 'remix', 'mv'
   ];
 
-  const karaokeKeywords = [
-    'karaoke', 'instrumental', 'minus one', 'no vocal', 
-    'sing along', 'backing track'
-  ];
+  if (musicKeywords.some(keyword => title.includes(keyword) || tags.includes(keyword))) {
+      return 'music';
+  }
 
-  const isMusic = musicKeywords.some(keyword => title.includes(keyword) || tags.includes(keyword));
-  const isKaraoke = karaokeKeywords.some(keyword => title.includes(keyword) || tags.includes(keyword));
-
-  return isMusic || isKaraoke;
+  return null;
 }
 
 export default function PlayerPage() {
@@ -41,6 +50,8 @@ export default function PlayerPage() {
   const isAutoplay = searchParams.get('autoplay') === '1';
   const { toast } = useToast();
   const wasPlayingBeforeHidden = useRef(false);
+  const [mediaType, setMediaType] = useState<MediaType>(null);
+
 
   useEffect(() => {
     // Check for iOS and show a one-time warning toast
@@ -247,8 +258,12 @@ export default function PlayerPage() {
     const queue = getQueue();
     const currentVideo = queue.find(v => v.id === videoId);
 
-    if (currentVideo && isMusicOrKaraokeVideo(currentVideo)) {
-        setupMediaSession();
+    if (currentVideo) {
+        const detectedType = isMusicOrKaraokeVideo(currentVideo);
+        setMediaType(detectedType);
+        if (detectedType) {
+            setupMediaSession();
+        }
     }
 
     const iframe = event.target.getIframe();
@@ -313,10 +328,30 @@ export default function PlayerPage() {
           }
       }
   }
+  
+  const renderMediaBadge = () => {
+    if (!mediaType) return null;
+    
+    const isKaraoke = mediaType === 'karaoke';
+    const Icon = isKaraoke ? Mic : Music;
+    const text = isKaraoke ? 'Karaoke Mode' : 'Music Mode';
+    const bgColor = isKaraoke ? 'bg-blue-600/80' : 'bg-black/60';
+    
+    return (
+        <div className={cn(
+            "absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold",
+            bgColor
+        )}>
+            <Icon className="h-4 w-4" />
+            <span>{text}</span>
+        </div>
+    )
+  }
 
   return (
     <>
-      <div className="w-screen h-screen bg-black flex justify-center items-center">
+      <div className="w-screen h-screen bg-black flex justify-center items-center relative">
+        {renderMediaBadge()}
         <div id="player" className="w-full h-full"></div>
         <button id="unmute" onClick={handleUnmute} className="fixed bottom-16 left-1/2 -translate-x-1/2 bg-black/50 text-white px-6 py-3 rounded-full text-lg z-50" style={{display: 'none'}}>
             🔊 Aktifkan Suara
@@ -326,3 +361,4 @@ export default function PlayerPage() {
     </>
   );
 }
+
