@@ -34,6 +34,11 @@ export default function CastAndMirrorButton() {
           setIsMenuOpen(!isMenuOpen);
       }
   }
+  
+  const handleAutoCast = () => {
+    setIsMenuOpen(false);
+    startAutoCast();
+  }
 
   if (isActive) {
     return (
@@ -42,8 +47,7 @@ export default function CastAndMirrorButton() {
         size="icon"
         onClick={() => stopSession()}
         className={cn(
-          'hover:text-white',
-          'bg-sky-500 text-white hover:bg-sky-600'
+          'hover:text-white text-white bg-sky-500 hover:bg-sky-600'
         )}
         aria-label="Stop Session"
         title={mode === 'mirror' ? 'Hentikan Mirror' : 'Hentikan Cast'}
@@ -85,6 +89,14 @@ export default function CastAndMirrorButton() {
                         Sambungkan ke TV (Chromecast)
                     </button>
                     
+                    <button
+                        className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
+                        onClick={handleAutoCast}
+                    >
+                       <MonitorSmartphone className="mr-2 h-4 w-4" />
+                       Mirror/Cast Tampilan (Otomatis)
+                    </button>
+                    
                     <Link href="/cast/receiver" target="_blank" className="w-full">
                         <button
                             className="w-full text-left flex items-center px-3 py-2 rounded-lg hover:bg-muted"
@@ -105,7 +117,8 @@ export default function CastAndMirrorButton() {
           onOpenChange={setIsSelectorOpen}
           onSelectDevice={() => {
               setIsSelectorOpen(false);
-              startAutoCast();
+              // The original Chromecast button now opens the native dialog
+              window.cast?.framework?.CastContext.getInstance().requestSession();
           }}
         />
     </div>

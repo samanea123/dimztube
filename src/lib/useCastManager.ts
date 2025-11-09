@@ -23,6 +23,8 @@ declare global {
   interface HTMLMediaElement {
     remote?: {
       prompt: () => Promise<void>;
+      watchAvailability: (callback: (available: boolean) => void) => Promise<number>;
+      cancelWatchAvailability: (id: number) => void;
     }
   }
 }
@@ -144,18 +146,27 @@ export function useCastManager() {
         await dummyVideo.play().catch(()=>{}); 
         videoRef.current = dummyVideo;
 
-        const casted = await handleRemotePlayback(dummyVideo);
-        if (casted) {
-            setStream(displayStream);
-            return true;
+        // Try Remote Playback (Miracast) first
+        if ('remote' in dummyVideo) {
+            const casted = await handleRemotePlayback(dummyVideo);
+            if (casted) {
+                setStream(displayStream);
+                // The `handleRemotePlayback` function will set the mode and status
+                return true;
+            }
+             // If user cancels or it fails, we fall through to mirroring.
         }
 
-        // Fallback to mirroring if miracast is not used or fails
+        // Fallback to full screen mirroring if Miracast isn't supported or used
         setStream(displayStream);
         displayStream.getVideoTracks()[0].addEventListener('ended', () => stopSession(false));
-
+        
+        setStatus('connected');
+        setMode('mirror');
         setDeviceName('Layar yang Dibagikan');
         await acquireWakeLock();
+        toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
+
         return true;
     } catch (err) {
         console.error("Gagal memulai sesi getDisplayMedia:", err);
@@ -206,13 +217,7 @@ export function useCastManager() {
         return true;
       default:
         const success = await handleDisplayMedia();
-        if (success) {
-            if (mode !== 'miracast') { // if miracast already set the mode, don't override
-                setStatus('connected');
-                setMode('mirror');
-                toast({ title: '✅ Mirror Mode Aktif', description: 'Tampilan layar Anda sekarang sedang dibagikan.' });
-            }
-        } else {
+        if (!success) {
             setStatus('disconnected');
         }
         return success;
