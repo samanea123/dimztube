@@ -37,6 +37,16 @@ export default function RootLayout({
                   if (preference === 'dark' || (!preference && systemSetting)) {
                     document.documentElement.classList.add('dark');
                   }
+
+                  if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                        console.log('Service Worker registration successful with scope: ', registration.scope);
+                      }, function(err) {
+                        console.log('Service Worker registration failed: ', err);
+                      });
+                    });
+                  }
                 } catch (e) {}
               })();
             `,
