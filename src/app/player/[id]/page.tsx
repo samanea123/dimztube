@@ -238,13 +238,17 @@ export default function PlayerPage() {
                 });
              }
         }
-        navigator.mediaSession.playbackState = "playing";
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = "playing";
+        }
     }
     if (event.data === YT.PlayerState.ENDED) {
         handleVideoEnd();
     }
     if (event.data === YT.PlayerState.PAUSED) {
-        navigator.mediaSession.playbackState = "paused";
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = "paused";
+        }
     }
   }
 
