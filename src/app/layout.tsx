@@ -52,8 +52,8 @@ export default function RootLayout({
             `,
           }}
         />
-        <script src="https://www.gstatic.com/cv/js/sender/v1/cast_framework.js" async></script>
         <script src="https://www.youtube.com/iframe_api" async></script>
+        <script src="https://www.gstatic.com/cv/js/sender/v1/cast_framework.js?loadCastFramework=1" async></script>
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <FirebaseClientProvider>
