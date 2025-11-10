@@ -2,14 +2,10 @@
 import { createSession, updateSession, addIceCandidate } from './webrtc';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-/**
- * Fungsi universal untuk CAST dan MIRROR di semua device/browser.
- * - CAST: kirim video ke TV / receiver
- * - MIRROR: cerminkan layar atau kamera
- */
 export async function startMiracast(mode: 'cast' | 'mirror') {
   try {
-    console.log(`🎬 Memulai mode: ${mode}`);
+    console.log(`🚀 Mulai ${mode.toUpperCase()} ...`);
+
     const sessionId = await createSession();
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: ['stun:stun1.l.google.com:19302'] }],
@@ -18,90 +14,73 @@ export async function startMiracast(mode: 'cast' | 'mirror') {
     let stream: MediaStream | null = null;
     const videoEl = document.querySelector('video');
 
-    // ============= 🎥 CAST MODE =============
+    // === CAST MODE ===
     if (mode === 'cast') {
       if (videoEl && typeof videoEl.captureStream === 'function') {
-        // Pastikan video aktif
-        if (videoEl.paused) {
-          await videoEl.play().catch(() => {
-            throw new Error('Video harus di-play dulu sebelum cast.');
-          });
-        }
-
-        // Tunggu sampai bisa di-capture
-        await new Promise((resolve) => {
-          if (videoEl.readyState >= 2) resolve(true);
-          else videoEl.addEventListener('canplay', () => resolve(true), { once: true });
-        });
-
+        // desktop/laptop
+        if (videoEl.paused) await videoEl.play().catch(() => {});
         // @ts-ignore
         stream = videoEl.captureStream();
-        console.log('✅ Cast via captureStream()');
+        console.log('🎬 Cast pakai captureStream()');
 
       } else if (navigator.mediaDevices?.getDisplayMedia) {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        console.log('✅ Cast via getDisplayMedia()');
+        // mobile fallback or no video found
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: 'always' },
+          audio: true,
+        });
+        console.log('📺 Cast pakai getDisplayMedia()');
 
       } else {
-        // Fallback ke upload video (mobile / no WebRTC support)
-        console.warn('⚠️ captureStream/getDisplayMedia tidak didukung. Gunakan upload fallback.');
-        const uploadedUrl = await uploadVideoToFirebase(sessionId);
-        if (!uploadedUrl) throw new Error('Upload dibatalkan.');
+        // fallback terakhir (HP)
+        console.warn('⚠️ Tidak support cast langsung, fallback upload.');
+        const uploaded = await uploadVideoToFirebase(sessionId);
+        if (!uploaded) throw new Error('Upload dibatalkan.');
 
         await updateSession(sessionId, {
           status: 'ready',
-          command: { type: 'play', payload: uploadedUrl, ts: Date.now() },
+          command: { type: 'play', payload: uploaded },
         });
-
-        const receiverUrl = `${window.location.origin}/cast/receiver/${sessionId}`;
-        // Gunakan setTimeout agar popup tidak diblokir
-        setTimeout(() => window.open(receiverUrl, '_blank', 'noopener,noreferrer'), 200);
-        alert('📡 Video diunggah dan siap diputar di perangkat tujuan.');
+        window.open(`${window.location.origin}/cast/receiver/${sessionId}`, '_blank');
+        alert('✅ Video diunggah ke TV melalui Firebase.');
         return;
       }
     }
 
-    // ============= 🪞 MIRROR MODE =============
-    else if (mode === 'mirror') {
-      if (navigator.mediaDevices?.getDisplayMedia) {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        console.log('✅ Mirror via getDisplayMedia()');
-      } else if (navigator.mediaDevices?.getUserMedia) {
-        alert('⚠️ Screen share tidak didukung. Menggunakan kamera sebagai mirror.');
+    // === MIRROR MODE ===
+    if (mode === 'mirror') {
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: 'always' },
+          audio: true,
+        });
+        console.log('🪞 Mirror pakai getDisplayMedia()');
+      } catch {
+        console.warn('⚠️ Mirror fallback ke kamera (mobile).');
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      } else {
-        alert('❌ Mirror tidak didukung pada browser ini.');
-        return;
       }
     }
 
-    // Tambahkan track stream ke peer connection
-    if (stream) {
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream!));
-    }
+    if (!stream) throw new Error('Tidak ada stream yang bisa digunakan.');
 
-    // ICE candidates untuk signaling via Firestore
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream!));
+
     pc.onicecandidate = async (event) => {
       if (event.candidate) {
         await addIceCandidate(sessionId, 'sender', event.candidate.toJSON());
       }
     };
 
-    // Buka halaman sender (sumber)
     const senderUrl = `${window.location.origin}/cast/sender/${sessionId}`;
-    setTimeout(() => window.open(senderUrl, '_blank', 'noopener,noreferrer'), 200);
+    window.open(senderUrl, '_blank', 'noopener,noreferrer');
 
-    alert(`✅ Mode ${mode === 'cast' ? 'Cast ke perangkat' : 'Mirror layar'} dimulai.`);
-
+    alert(`✅ ${mode === 'cast' ? 'Casting video' : 'Mirroring layar'} dimulai!`);
   } catch (err: any) {
-    console.error('❌ Error Miracast:', err);
-    alert(`❌ Gagal memulai ${mode === 'cast' ? 'Cast Video' : 'Mirror Layar'}.\n${err.message || err}`);
+    console.error('❌ Gagal memulai Miracast:', err);
+    alert(`❌ ${err.message || err}`);
   }
 }
 
-/**
- * Upload video manual ke Firebase (fallback untuk HP)
- */
 async function uploadVideoToFirebase(sessionId: string): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
@@ -111,16 +90,15 @@ async function uploadVideoToFirebase(sessionId: string): Promise<string | null> 
 
     input.onchange = async () => {
       if (!input.files?.[0]) {
-        alert('Tidak ada file yang dipilih.');
         resolve(null);
         return;
       }
       const file = input.files[0];
       const storage = getStorage();
-      const fileRef = ref(storage, `uploads/${sessionId}-${Date.now()}-${file.name}`);
+      const fileRef = ref(storage, `uploads/${sessionId}-${file.name}`);
       const snapshot = await uploadBytes(fileRef, file);
       const url = await getDownloadURL(snapshot.ref);
-      console.log('📤 Upload selesai:', url);
+      console.log('📤 File diupload:', url);
       resolve(url);
     };
   });
