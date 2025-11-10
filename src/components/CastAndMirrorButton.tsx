@@ -11,30 +11,41 @@ function isMobile() {
 export default function CastAndMirrorButton() {
   const handleCast = async () => {
     try {
-      // 🔍 Cek apakah ada cast framework (YouTube Cast)
+      // Cek apakah ada native Google Cast (YouTube / Chromecast SDK)
       const hasNativeCast = !!(window.chrome && (window as any).cast && (window as any).cast.framework);
 
       if (hasNativeCast) {
-        alert('🎬 YouTube Cast aktif. Gunakan ikon Cast di pemutar video untuk streaming ke TV.');
+        alert('🎬 Cast bawaan YouTube aktif. Gunakan ikon Cast di player.');
         return;
       }
 
-      if (isMobile()) {
-        alert(
-          '📱 Untuk melakukan Cast dari HP:\n\n' +
-          '1️⃣ Tekan ikon ⋮ (tiga titik) di browser.\n' +
-          '2️⃣ Pilih "Cast" atau "Bagikan layar".\n' +
-          '3️⃣ Pilih perangkat TV Anda.\n\n' +
-          '💡 Setelah itu, video akan muncul di TV.'
-        );
+      // 🌐 1️⃣ Fallback pertama — Presentation API (native Android cast)
+      if ('PresentationRequest' in window) {
+        console.log('📺 Menjalankan Cast via PresentationRequest...');
+        const presentationUrl = `${window.location.origin}/cast/receiver`;
+        const request = new (window as any).PresentationRequest(presentationUrl);
+
+        const connection = await request.start();
+        console.log('✅ Presentation connection', connection);
         return;
       }
 
-      // 💻 Fallback: jalankan Miracast manual
+      // 📱 2️⃣ Fallback kedua — Android share screen
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        console.log('📲 Jalankan getDisplayMedia() fallback...');
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        const videoEl = document.createElement('video');
+        videoEl.srcObject = stream;
+        videoEl.play();
+        alert('✅ Cast layar aktif.');
+        return;
+      }
+
+      // 💻 3️⃣ Fallback terakhir — WebRTC cast custom
       await startMiracast('cast');
     } catch (err) {
-      console.error('Gagal memulai Cast:', err);
-      alert('❌ Cast gagal dijalankan di perangkat ini.');
+      console.error('❌ Gagal memulai Cast:', err);
+      alert('Cast gagal dijalankan. Browser ini mungkin tidak mendukung.');
     }
   };
 
