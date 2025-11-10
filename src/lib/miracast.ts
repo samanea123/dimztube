@@ -16,10 +16,22 @@ export async function startMiracast(mode: 'cast' | 'mirror') {
 
     // --- Coba ambil stream berdasarkan mode ---
     if (mode === 'cast' && videoEl && 'captureStream' in videoEl) {
-      // CAST VIDEO
+      if (videoEl.paused) {
+        await videoEl.play().catch(() => {
+          alert("Klik play dulu di video sebelum melakukan cast.");
+          throw new Error("Video belum diputar.");
+        });
+      }
+
+      // Tunggu sampai video bisa dicapture
+      await new Promise((resolve) => {
+        if (videoEl.readyState >= 2) resolve(true);
+        else videoEl.addEventListener('canplay', () => resolve(true), { once: true });
+      });
+
       // @ts-ignore
       stream = videoEl.captureStream();
-      console.log('🎥 Menggunakan video.captureStream()');
+      console.log('🎥 Menggunakan video.captureStream() (video aktif)');
     } else if (mode === 'mirror' && navigator.mediaDevices?.getDisplayMedia) {
       // MIRROR SCREEN
       stream = await navigator.mediaDevices.getDisplayMedia({
