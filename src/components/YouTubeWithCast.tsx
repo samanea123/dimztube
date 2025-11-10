@@ -45,6 +45,7 @@ export default function YouTubeWithCast({ videoId = 'dQw4w9WgXcQ', className = '
           modestbranding: 1,
           rel: 0,
           controls: 1,
+          enablejsapi: 1, // Wajib untuk memunculkan ikon Cast
         },
         events: {
           onReady: (e: any) => {
