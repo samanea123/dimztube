@@ -28,7 +28,7 @@ export async function startMiracast(mode: 'cast' | 'mirror') {
         console.log('🎬 Cast pakai captureStream()');
       } 
       else if (navigator.mediaDevices?.getDisplayMedia) {
-        // Desktop browser
+        // Desktop browser / Android fallback
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: { cursor: 'always' },
           audio: true,

@@ -7,27 +7,13 @@ import { startMiracast } from '@/lib/miracast';
 // This console.log helps ensure the module is included in the build.
 console.log('Miracast module loaded:', typeof startMiracast);
 
-function triggerSystemCast() {
-  if ((navigator as any).presentation) {
-    alert('Gunakan fitur Cast di menu browser (⋮ > Cast) untuk menampilkan di TV.');
-  } else {
-    alert('Perangkat ini tidak mendukung cast langsung. Silakan gunakan menu Cast di browser.');
-  }
-}
-
 export default function CastAndMirrorButton() {
   return (
     <div className="flex items-center gap-2">
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => {
-          if (/Android/i.test(navigator.userAgent)) {
-            triggerSystemCast();
-          } else {
-            startMiracast('cast');
-          }
-        }}
+        onClick={() => startMiracast('cast')}
         title="Cast Video ke TV"
         className="hover:text-primary"
       >
