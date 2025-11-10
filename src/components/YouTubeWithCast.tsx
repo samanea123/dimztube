@@ -9,45 +9,67 @@ declare global {
   }
 }
 
-export default function YouTubeWithCast() {
-  const playerRef = useRef<HTMLDivElement>(null);
+type Props = {
+  videoId?: string; // jika tidak dikirim, bisa diisi dinamis
+  className?: string;
+};
+
+export default function YouTubeWithCast({ videoId = 'dQw4w9WgXcQ', className = '' }: Props) {
+  const playerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Fungsi untuk inisialisasi player
-    const initializePlayer = () => {
-      if (playerRef.current && window.YT) {
-        new window.YT.Player(playerRef.current, {
-          height: '360',
-          width: '640',
-          videoId: 'dQw4w9WgXcQ', // Ganti ke ID video kamu
-          playerVars: {
-            playsinline: 1,
-            modestbranding: 1,
-            rel: 0,
-          },
-          events: {
-            onReady: (event: any) => {
-              console.log('YouTube player siap:', event);
-            },
-          },
-        });
-      }
-    };
-    
-    // Cek jika YT API sudah ada, langsung inisialisasi.
-    // Jika belum, tunggu event onYouTubeIframeAPIReady.
-    if (window.YT && window.YT.Player) {
-      initializePlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = initializePlayer;
+    // 1) inject YouTube IFrame API once
+    if (!document.querySelector('script[data-yt-api]')) {
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.setAttribute('data-yt-api', '1');
+      s.async = true;
+      document.body.appendChild(s);
     }
-  }, []);
+
+    // 2) When API ready, create player
+    window.onYouTubeIframeAPIReady = () => {
+      if (!playerRef.current) return;
+
+      // If a previous iframe exists, remove it first
+      playerRef.current.innerHTML = '';
+
+      // create player
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      new (window as any).YT.Player(playerRef.current, {
+        height: '360',
+        width: '640',
+        videoId,
+        playerVars: {
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0,
+          controls: 1,
+        },
+        events: {
+          onReady: (e: any) => {
+            // do not autoplay by default; allow user to click play
+            console.log('YouTube player ready', videoId);
+          },
+        },
+      });
+      /* eslint-enable @typescript-eslint/no-explicit-any */
+    };
+
+    // Cleanup: remove handler (keamanan)
+    return () => {
+      try {
+        // @ts-ignore
+        delete window.onYouTubeIframeAPIReady;
+      } catch {}
+    };
+  }, [videoId]);
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <div id="youtube-player" ref={playerRef}></div>
-      <p className="text-sm text-gray-500 mt-2">
-        🔥 Logo cast muncul otomatis kalau ada TV/Chromecast di jaringan yang sama.
+    <div className={`youtube-cast-wrapper ${className}`}>
+      <div ref={playerRef} id={`youtube-player-${videoId}`} />
+      <p className="text-sm text-muted mt-2">
+        Jika ada perangkat Chromecast / Android TV di jaringan yang sama, ikon Cast akan muncul di player.
       </p>
     </div>
   );
